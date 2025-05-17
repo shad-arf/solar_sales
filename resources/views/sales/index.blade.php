@@ -16,33 +16,59 @@
             <th class="text-end">Total ($)</th>
             <th class="text-end">Paid ($)</th>
             <th class="text-end">Outstanding ($)</th>
+            <th>Status</th>
             <th>Actions</th>
         </tr>
     </thead>
     <tbody>
         @forelse($sales as $sale)
         @php
-            $total       = $sale->item->price * $sale->quantity;
+            $total = $sale->total;
             $outstanding = $total - $sale->paid;
         @endphp
         <tr>
             <td>{{ \Carbon\Carbon::parse($sale->date)->format('Y-m-d') }}</td>
-            <td>{{ $sale->customer->name }}</td>
-            <td>{{ $sale->item->name }}</td>
+            <td>{{ $sale->customer->name ?? 'Deleted Customer' }}</td>
+            <td>{{ $sale->item->name ?? 'Deleted Item' }}</td>
             <td class="text-end">{{ $sale->quantity }}</td>
             <td class="text-end">{{ number_format($total, 2) }}</td>
             <td class="text-end">{{ number_format($sale->paid, 2) }}</td>
             <td class="text-end {{ $outstanding > 0 ? 'text-danger' : '' }}">{{ number_format($outstanding, 2) }}</td>
             <td>
-                <a href="{{ route('sales.edit', $sale) }}" class="btn btn-sm btn-primary">Edit</a>
-                <form action="{{ route('sales.destroy', $sale) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete sale? This will adjust customer loan.');">
-                    @csrf @method('DELETE')
-                    <button class="btn btn-sm btn-danger">Delete</button>
-                </form>
+                @if($sale->trashed())
+                    <span class="badge bg-danger">Deleted</span>
+                @else
+                    <span class="badge bg-success">Active</span>
+                @endif
+            </td>
+            <td>
+                @if($sale->trashed())
+                    <form action="{{ route('sales.restore', $sale->id) }}" method="POST" class="d-inline">
+                        @csrf
+                        <button class="btn btn-sm btn-warning">Restore</button>
+                    </form>
+                    <form action="{{ route('sales.forceDelete', $sale->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Permanently delete this sale?');">
+                        @csrf
+                        @method('DELETE')
+                        <button class="btn btn-sm btn-danger">Delete Forever</button>
+                    </form>
+                @else
+                    <a href="{{ route('sales.edit', $sale) }}" class="btn btn-sm btn-primary">Edit</a>
+                    <form action="{{ route('sales.destroy', $sale) }}" method="POST" class="d-inline" onsubmit="return confirm('Soft delete this sale?');">
+                        @csrf
+                        @method('DELETE')
+                        <button class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                    <a href="{{ route('sales.history', $sale->customer_id) }}" class="btn btn-sm btn-info">History</a>
+                   <form action="{{ route('customers.clearLoan', $sale->customer_id) }}" method="POST">
+                              @csrf
+                        <button class="btn btn-sm btn-warning" onclick="return confirm('Clear all loan for this customer?')">Pay All</button>
+                    </form>
+                @endif
             </td>
         </tr>
         @empty
-        <tr><td colspan="8" class="text-center">No sales recorded.</td></tr>
+        <tr><td colspan="9" class="text-center">No sales recorded.</td></tr>
         @endforelse
     </tbody>
 </table>

@@ -13,6 +13,11 @@
         <input type="text" name="code" value="{{ old('code') }}" class="form-control" required>
     </div>
     <div class="mb-3">
+    <label class="form-label">Stock Quantity</label>
+    <input type="number" name="quantity" value="{{ old('quantity') }}" min="0" class="form-control" required>
+</div>
+
+    <div class="mb-3">
         <label class="form-label">Price ($)</label>
         <input type="number" name="price" value="{{ old('price') }}" step="0.01" min="0" class="form-control" required>
     </div>

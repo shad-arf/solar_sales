@@ -15,20 +15,30 @@
         </tr>
     </thead>
     <tbody>
-        @forelse($customers as $cust)
+        @forelse($customers as $customer)
+        @php $loan = $customer->calculated_loan ?? 0; @endphp
         <tr>
-            <td>{{ $cust->name }}</td>
-            <td class="text-end {{ $cust->loan > 0 ? 'text-danger' : '' }}">{{ number_format($cust->loan, 2) }}</td>
+            <td>{{ $customer->name }}</td>
+            <td class="text-end {{ $loan > 0 ? 'text-danger' : 'text-success' }}">
+                {{ number_format($loan, 2) }}
+            </td>
             <td>
-                <a href="{{ route('customers.edit', $cust) }}" class="btn btn-sm btn-primary">Edit</a>
-                <form action="{{ route('customers.destroy', $cust) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete customer?');">
-                    @csrf @method('DELETE')
+                <a href="{{ route('customers.edit', $customer) }}" class="btn btn-sm btn-primary">Edit</a>
+                <form action="{{ route('customers.destroy', $customer) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete customer?');">
+                    @csrf
+                    @method('DELETE')
                     <button class="btn btn-sm btn-danger">Delete</button>
                 </form>
+                @if($loan > 0)
+                <form action="{{ route('customers.clearLoan', $customer->id) }}" method="POST" class="d-inline">
+                    @csrf
+                    <button class="btn btn-sm btn-warning" onclick="return confirm('Clear loan for {{ $customer->name }}?')">Clear Loan</button>
+                </form>
+                @endif
             </td>
         </tr>
         @empty
-        <tr><td colspan="3" class="text-center">No customers.</td></tr>
+        <tr><td colspan="3" class="text-center">No customers found.</td></tr>
         @endforelse
     </tbody>
 </table>

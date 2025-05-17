@@ -6,18 +6,22 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up(): void
+  public function up(): void
     {
         Schema::create('sales', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('item_id')->constrained('items')->restrictOnDelete();
-            $table->foreignId('customer_id')->constrained('customers')->restrictOnDelete();
+            $table->foreignId('item_id')->constrained('items')->restrictOnDelete(); // keep item FK
+            $table->unsignedBigInteger('customer_id'); // no FK constraint
             $table->unsignedInteger('quantity');
-            $table->decimal('paid', 10, 2);
+            $table->string('paid');
+            $table->string('discount')->default(0);
+            $table->string('total');
             $table->date('date');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
+
 
     public function down(): void
     {

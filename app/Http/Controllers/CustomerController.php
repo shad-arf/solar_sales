@@ -7,11 +7,17 @@ use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
-    public function index()
-    {
-        $customers = Customer::all();
-        return view('customers.index', compact('customers'));
+  public function index()
+{
+    $customers = Customer::with(['sales'])->get();
+
+    foreach ($customers as $customer) {
+        $customer->calculated_loan = $customer->sales->sum(fn($sale) => $sale->total - $sale->paid);
     }
+
+    return view('customers.index', compact('customers'));
+}
+
 
     public function create()
     {
@@ -48,4 +54,18 @@ class CustomerController extends Controller
         $customer->delete();
         return redirect()->route('customers.index')->with('success', 'Customer deleted.');
     }
+
+        public function clearLoan(Customer $customer)
+        {
+            // Update each sale: paid = total
+            foreach ($customer->sales as $sale) {
+                $sale->update(['paid' => $sale->total]);
+            }
+
+            // Clear loan from customer record
+            $customer->update(['loan' => 0]);
+
+            return back()->with('success', 'Customer loan has been cleared and all sales marked as fully paid.');
+        }
+
 }
