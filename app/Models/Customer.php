@@ -10,10 +10,22 @@ class Customer extends Model
 {
     use HasFactory , SoftDeletes;
 
-    protected $fillable = ['name', 'loan'];
+
+    protected $fillable = [
+        'name',
+        'email',
+        'phone',
+        'address',
+        'city',
+        'state',
+        'country',
+        'note',
+        'loan',
+    ];
 
 
-    
+
+
     public function sales()
     {
         return $this->hasMany(Sale::class);

@@ -76,7 +76,7 @@ class ItemController extends Controller
     public function destroy(Item $item)
     {
         $item->delete();
-        return redirect()->route('items.index')->with('success', 'Item soft deleted.');
+        return redirect()->route('items.index')->with('success', 'Item deleted.');
     }
 
     public function restore($id)

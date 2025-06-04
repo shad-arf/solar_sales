@@ -6,31 +6,22 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('sale_id'); // FK to the sale
-            $table->decimal('amount', 10, 2); // Amount paid in this transaction
-            $table->timestamp('paid_at')->useCurrent(); // When it was paid
-            $table->text('note')->nullable(); // Optional (e.g., “Paid in cash”)
+            $table->foreignId('sale_id')->constrained('sales')->onDelete('cascade');
+            $table->decimal('amount', 10, 2);
+            $table->timestamp('paid_at')->useCurrent();
+            $table->text('note')->nullable();
             $table->timestamps();
-
             $table->softDeletes();
-            // optional: you can add FK if you want
-            $table->foreign('sale_id')->references('id')->on('sales')->onDelete('cascade');
         });
-
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('payments');
     }
 };
+

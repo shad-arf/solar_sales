@@ -10,9 +10,14 @@ class Sale extends Model
 {
     use HasFactory , SoftDeletes;
 
-    protected $fillable = ['item_id', 'customer_id', 'quantity', 'paid', 'date' ,'total' , 'discount'];
+    protected $fillable = ['code','customer_id', 'sale_date', 'total', 'paid_amount'];
 
     protected $dates = ['date'];
+
+     public function orderItems() // if your pivot table is named 'orders'
+    {
+        return $this->hasMany(Order::class); // or OrderItem::class
+    }
 
     public function item()
     {
