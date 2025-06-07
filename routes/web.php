@@ -29,6 +29,10 @@ Route::middleware('auth')->group(function () {
     Route::post('users', [AuthController::class, 'store'])->name('users.store');
 
 
+    Route::get('customers/trashed',         [CustomerController::class, 'trashed'])->name('customers.trashed');
+    Route::post('customers/{id}/restore',   [CustomerController::class, 'restore'])->name('customers.restore');
+    Route::delete('customers/{id}/force',   [CustomerController::class, 'forceDelete'])->name('customers.forceDelete');
+
 
     Route::get('users/create', [AuthController::class, 'create'])->name('users.create');
    Route::get('users/{id}/edit', [AuthController::class, 'edit'])->name('users.edit');  Route::patch('users/{user}', [AuthController::class, 'update'])->name('users.update');

@@ -11,14 +11,16 @@
     </div>
 </div>
 
-<table class="table table-striped">
+<table class="table table-bordered table-striped">
     <thead>
         <tr>
             <th>Code</th>
             <th>Name</th>
             <th class="text-end">Price ($)</th>
-            <th class="text-end">Qty</th>
-            <th>Actions</th>
+            <th class="text-end">Base Price ($)</th>
+            <th class="text-end">Operator Price ($)</th>
+            <th class="text-end">Quantity</th>
+            <th class="text-center">Actions</th>
         </tr>
     </thead>
     <tbody>
@@ -27,10 +29,12 @@
             <td>{{ $item->code }}</td>
             <td>{{ $item->name }}</td>
             <td class="text-end">{{ number_format($item->price, 2) }}</td>
+            <td class="text-end">{{ number_format($item->base_price, 2) }}</td>
+            <td class="text-end">{{ number_format($item->operator_price, 2) }}</td>
             <td class="text-end {{ $item->quantity == 0 ? 'text-danger' : ($item->quantity < 10 ? 'text-warning' : '') }}">
                 {{ $item->quantity }}
             </td>
-            <td>
+            <td class="text-center">
                 <a href="{{ route('items.edit', $item) }}" class="btn btn-sm btn-primary">Edit</a>
                 <form action="{{ route('items.destroy', $item) }}" method="POST" class="d-inline" onsubmit="return confirm('Soft delete this item?');">
                     @csrf @method('DELETE')
@@ -39,7 +43,9 @@
             </td>
         </tr>
         @empty
-        <tr><td colspan="5" class="text-center">No items available.</td></tr>
+        <tr>
+            <td colspan="7" class="text-center">No items available.</td>
+        </tr>
         @endforelse
     </tbody>
 </table>

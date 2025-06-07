@@ -10,7 +10,7 @@ class Item extends Model
 {
     use HasFactory ,SoftDeletes;
 
-    protected $fillable = ['name', 'code', 'price' , 'quantity'];
+    protected $fillable = ['name', 'code', 'price' , 'quantity', 'base_price' , 'operator_price'];
 
     public function sales()
     {

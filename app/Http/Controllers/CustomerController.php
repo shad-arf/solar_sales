@@ -98,6 +98,45 @@ class CustomerController extends Controller
      *    - mark each sale as fully paid (paid_amount = total)
      *    - reset loan field to zero
      */
+    /**
+ * Display a listing of soft-deleted customers.
+ */
+public function trashed()
+{
+    $customers = Customer::onlyTrashed()->with('sales')->get();
+
+    foreach ($customers as $customer) {
+        $customer->calculated_loan = $customer->sales
+            ->sum(fn($sale) => $sale->total - $sale->paid_amount);
+    }
+
+    return view('customers.trashed', compact('customers'));
+}
+
+/**
+ * Restore a soft-deleted customer.
+ */
+public function restore($id)
+{
+    $customer = Customer::onlyTrashed()->findOrFail($id);
+    $customer->restore();
+
+    return redirect()->route('customers.trashed')
+                     ->with('success', 'Customer restored.');
+}
+
+/**
+ * Permanently delete a soft-deleted customer.
+ */
+public function forceDelete($id)
+{
+    $customer = Customer::onlyTrashed()->findOrFail($id);
+    $customer->forceDelete();
+
+    return redirect()->route('customers.trashed')
+                     ->with('success', 'Customer permanently deleted.');
+}
+
     public function clearLoan(Customer $customer)
     {
         foreach ($customer->sales as $sale) {

@@ -36,7 +36,7 @@
                     @forelse($sale->payments as $payment)
                         <div>
                             ${{ number_format($payment->amount, 2) }}
-                            <small class="text-muted">{{ $payment->paid_at->format('Y-m-d H:i') }}</small>
+                            <small class="text-muted">{{ $payment->paid_at }}</small>
                         </div>
                     @empty
                         <small class="text-muted">No payments</small>

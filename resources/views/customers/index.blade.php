@@ -3,7 +3,10 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">Customers</h2>
-    <a href="{{ route('customers.create') }}" class="btn btn-success">Add Customer</a>
+    <div>
+        <a href="{{ route('customers.create') }}" class="btn btn-success me-2">Add Customer</a>
+        <a href="{{ route('customers.trashed') }}" class="btn btn-secondary">Deleted Customers</a>
+    </div>
 </div>
 
 <table class="table table-striped">
@@ -36,6 +39,7 @@
                     <a href="{{ route('customers.edit', $customer) }}" class="btn btn-sm btn-primary">
                         Edit
                     </a>
+
                     <form action="{{ route('customers.destroy', $customer) }}" method="POST" class="d-inline"
                           onsubmit="return confirm('Delete this customer?');">
                         @csrf
