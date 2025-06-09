@@ -55,92 +55,94 @@ class SaleController extends Controller
      */
     public function create()
     {
-        $items = Item::whereNull('deleted_at')->get();
-        $customers = Customer::whereNull('deleted_at')->get();
-        return view('sales.create', compact('items', 'customers'));
+        $items       = Item::whereNull('deleted_at')->get();
+        $customers   = Customer::whereNull('deleted_at')->get();
+        // get the highest item id (i.e. the last one added)
+        $saleId  = Sale::whereNull('deleted_at')->max(column: 'id');
+
+        return view('sales.create', compact('items', 'customers', 'saleId'));
     }
+
 
     /**
      * Store a new sale, plus initial payment record.
      */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'customer_id'     => 'required|exists:customers,id',
-            'sale_date'       => 'required|date',
-            'paid_amount'     => 'required|numeric|min:0',
-            'subtotal'        => 'required|numeric|min:0',
-            'code'            => 'required|unique:sales,code',
+   public function store(Request $request)
+{
+    $validated = $request->validate([
+        'customer_id'       => 'required|exists:customers,id',
+        'sale_date'         => 'required|date',
+        'paid_amount'       => 'required|numeric|min:0',
+        'subtotal'          => 'required|numeric|min:0',
+        'code'              => 'required|unique:sales,code',
 
-            'item_id'         => 'required|array|min:1',
-            'item_id.*'       => 'required|exists:items,id',
+        'item_id'           => 'required|array|min:1',
+        'item_id.*'         => 'required|exists:items,id',
 
-            'quantity'        => 'required|array',
-            'quantity.*'      => 'required|integer|min:1',
+        'quantity'          => 'required|array',
+        'quantity.*'        => 'required|integer|min:1',
 
-            'line_discount'   => 'nullable|array',
-            'line_discount.*' => 'nullable|numeric|min:0|max:100',
+        'line_discount'     => 'nullable|array',
+        'line_discount.*'   => 'nullable|numeric|min:0|max:100',
 
-            'line_total'      => 'required|array',
-            'line_total.*'    => 'required|numeric|min:0',
+        'line_total'        => 'required|array',
+        'line_total.*'      => 'required|numeric|min:0',
+    ]);
+
+    DB::beginTransaction();
+
+    try {
+        // 1) Create sale
+        $sale = Sale::create([
+            'customer_id' => $validated['customer_id'],
+            'code'        => $validated['code'],
+            'sale_date'   => $validated['sale_date'],
+            'total'       => $validated['subtotal'],
+            'paid_amount' => $validated['paid_amount'],
         ]);
 
-        DB::beginTransaction();
+        // 2) Create order items & decrement stock
+        foreach ($validated['item_id'] as $i => $itemId) {
+            $quantity   = $validated['quantity'][$i];
+            $discount   = $validated['line_discount'][$i] ?? 0;
+            $lineTotal  = $validated['line_total'][$i];
 
-        try {
-            // 1) Create the sale record
-            $sale = Sale::create([
-                'customer_id'  => $validated['customer_id'],
-                'code'         => $validated['code'],
-                'sale_date'    => $validated['sale_date'],
-                'total'        => $validated['subtotal'],
-                'paid_amount'  => $validated['paid_amount'],
+            $item = Item::findOrFail($itemId);
+            if ($item->quantity < $quantity) {
+                throw new \Exception("Not enough stock for {$item->name}. Available: {$item->quantity}");
+            }
+
+            Order::create([
+                'sale_id'       => $sale->id,
+                'item_id'       => $itemId,
+                'quantity'      => $quantity,
+                'unit_price'    => $item->price,
+                'line_discount' => $discount,
+                'line_total'    => $lineTotal,
             ]);
 
-            // 2) Create each order item & decrement stock
-            foreach ($validated['item_id'] as $index => $itemId) {
-                $quantity  = $validated['quantity'][$index];
-                $discount  = $validated['line_discount'][$index] ?? 0;
-                $lineTotal = $validated['line_total'][$index];
-
-                $item = Item::findOrFail($itemId);
-                if ($item->quantity < $quantity) {
-                    throw new \Exception("Not enough stock for item: {$item->name} (Available: {$item->quantity})");
-                }
-
-                Order::create([
-                    'sale_id'       => $sale->id,
-                    'item_id'       => $itemId,
-                    'quantity'      => $quantity,
-                    'unit_price'    => $item->price,
-                    'line_discount' => $discount,
-                    'line_total'    => $lineTotal,
-                ]);
-
-                $item->decrement('quantity', $quantity);
-            }
-
-            // 3) Record initial payment history
-            if ($validated['paid_amount'] > 0) {
-                Payment::create([
-                    'sale_id' => $sale->id,
-                    'amount'  => $validated['paid_amount'],
-                    'paid_at' => now(),
-                    'note'    => null,
-                ]);
-            }
-
-            DB::commit();
-            return redirect()->route('sales.index')->with('success', 'Sale recorded successfully.');
+            $item->decrement('quantity', $quantity);
         }
-        catch (\Throwable $e) {
-            DB::rollBack();
-            return back()
-                ->withErrors(['error' => 'Failed to record sale: ' . $e->getMessage()])
-                ->withInput();
+
+        // 3) Record payment
+        if ($validated['paid_amount'] > 0) {
+            Payment::create([
+                'sale_id' => $sale->id,
+                'amount'  => $validated['paid_amount'],
+                'paid_at' => now(),
+            ]);
         }
+
+        DB::commit();
+        return redirect()->route('sales.index')
+                         ->with('success', 'Sale recorded successfully.');
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        return back()
+            ->withErrors(['error' => 'Failed to record sale: '.$e->getMessage()])
+            ->withInput();
     }
-
+}
     /**
      * Show “Edit Sale” form, including item list and payment history
      */
