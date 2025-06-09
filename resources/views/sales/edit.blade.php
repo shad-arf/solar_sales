@@ -14,7 +14,10 @@
                 id="customer-select"
                 class="form-select @error('customer_id') is-invalid @enderror"
                 required>
-            @foreach ($customers as $cust)
+            <option value="" disabled {{ old('customer_id', $sale->customer_id) ? '' : 'selected' }}>
+                Select customer…
+            </option>
+            @foreach($customers as $cust)
                 <option value="{{ $cust->id }}"
                         data-is-operator="{{ $cust->is_operator ? '1' : '0' }}"
                         {{ old('customer_id', $sale->customer_id) == $cust->id ? 'selected' : '' }}>
@@ -47,94 +50,117 @@
             <thead class="table-light">
                 <tr>
                     <th>Item</th>
-                    <th class="text-end">Reg. Price ($)</th>
-                    <th class="text-end">Op. Price ($)</th>
-                    <th class="text-end">Base Price ($)</th>
+                    <th class="text-end">Reg. Price</th>
+                    <th class="text-end">Op. Price</th>
+                    <th class="text-end">Base Price</th>
                     <th>Price Type</th>
                     <th class="text-center">Qty</th>
                     <th class="text-center">Discount (%)</th>
-                    <th class="text-end">Line Total ($)</th>
+                    <th class="text-end">Line Total</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody id="items-body">
-                @foreach($sale->orderItems as $i => $oi)
-                    @php
-                        // Determine which type was used
-                        $type = 'regular';
-                        if     ($oi->unit_price == $oi->item->operator_price) $type = 'operator';
-                        elseif ($oi->unit_price == $oi->item->base_price)     $type = 'base';
-                    @endphp
-                    <tr class="item-row">
-                        <input type="hidden" name="order_item_id[]" value="{{ $oi->id }}">
-                        <td>
-                            <select name="item_id[]" class="form-select item-select" required onchange="updateRow(this)">
-                                <option value="" disabled>Select item…</option>
-                                @foreach($items as $itm)
-                                    <option value="{{ $itm->id }}"
-                                            data-price="{{ $itm->price }}"
-                                            data-op-price="{{ $itm->operator_price }}"
-                                            data-base-price="{{ $itm->base_price }}"
-                                            {{ $itm->id == $oi->item_id ? 'selected' : '' }}>
-                                        {{ $itm->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </td>
-                        <td class="text-end">
-                            <input type="text" class="form-control line-price-reg" readonly>
-                        </td>
-                        <td class="text-end">
-                            <input type="text" class="form-control line-price-op" readonly>
-                        </td>
-                        <td class="text-end">
-                            <input type="text" class="form-control line-price-base" readonly>
-                        </td>
-                        <td>
-                            <select name="price_type[]" class="form-select price-type" onchange="updateRow(this)">
-                                <option value="regular" {{ $type=='regular' ? 'selected' : '' }}>Regular</option>
-                                <option value="operator" {{ $type=='operator' ? 'selected' : '' }}>Operator</option>
-                                <option value="base"     {{ $type=='base'     ? 'selected' : '' }}>Base</option>
-                            </select>
-                        </td>
-                        <td class="text-center">
-                            <input type="number"
-                                   name="quantity[]"
-                                   value="{{ old("quantity.$i", $oi->quantity) }}"
-                                   min="1"
-                                   class="form-control line-quantity"
-                                   onchange="updateRow(this)"
-                                   oninput="updateRow(this)"
-                                   required>
-                        </td>
-                        <td class="text-center">
-                            <input type="number"
-                                   name="discount[]"
-                                   value="{{ old("discount.$i", $oi->discount) }}"
-                                   step="0.01"
-                                   min="0"
-                                   max="100"
-                                   class="form-control line-discount"
-                                   onchange="updateRow(this)"
-                                   oninput="updateRow(this)">
-                        </td>
-                        <td class="text-end">
-                            <input type="text"
-                                   name="line_total[]"
-                                   value="{{ number_format($oi->line_total,2) }}"
-                                   class="form-control line-total"
-                                   readonly>
-                        </td>
-                        <td class="text-center">
-                            <button type="button"
-                                    class="btn btn-sm btn-outline-danger"
-                                    onclick="removeRow(this)"
-                                    title="Remove">
-                                <i class="bi bi-trash">delete</i>
-                            </button>
-                        </td>
-                    </tr>
-                @endforeach
+                @if(old('item_id'))
+                    @foreach(old('item_id') as $i => $oldItemId)
+                        <tr class="item-row">
+                            <input type="hidden" name="order_item_id[]" value="{{ old("order_item_id.$i") }}">
+                            <td>
+                                <select name="item_id[]"
+                                        class="form-select item-select @error('item_id.'.$i) is-invalid @enderror"
+                                        required onchange="updateRow(this)">
+                                    <option value="" disabled>Select item…</option>
+                                    @foreach($items as $itm)
+                                        <option value="{{ $itm->id }}"
+                                                data-price="{{ $itm->price }}"
+                                                data-op-price="{{ $itm->operator_price }}"
+                                                data-base-price="{{ $itm->base_price }}"
+                                                {{ $oldItemId == $itm->id ? 'selected' : '' }}>
+                                            {{ $itm->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('item_id.'.$i)
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </td>
+                            <td><input type="text" class="form-control line-price-reg" readonly></td>
+                            <td><input type="text" class="form-control line-price-op"  readonly></td>
+                            <td><input type="text" class="form-control line-price-base" readonly></td>
+                            <td>
+                                <select name="price_type[]" class="form-select price-type" onchange="updateRow(this)">
+                                    <option value="regular" {{ old("price_type.$i")=='regular'  ? 'selected':'' }}>Regular</option>
+                                    <option value="operator"{{ old("price_type.$i")=='operator'? 'selected':'' }}>Operator</option>
+                                    <option value="base"    {{ old("price_type.$i")=='base'    ? 'selected':'' }}>Base</option>
+                                </select>
+                            </td>
+                            <td><input type="number" name="quantity[]" min="1"
+                                       class="form-control line-quantity" required
+                                       value="{{ old("quantity.$i",1) }}"
+                                       onchange="updateRow(this)" oninput="updateRow(this)"></td>
+                            <td><input type="number" name="discount[]" step="0.01" min="0" max="100"
+                                       class="form-control line-discount"
+                                       value="{{ old("discount.$i",0) }}"
+                                       onchange="updateRow(this)" oninput="updateRow(this)"></td>
+                            <td><input type="text" name="line_total[]" class="form-control line-total" readonly></td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    @endforeach
+                @else
+                    @foreach($sale->orderItems as $i => $oi)
+                        @php
+                            $type = $oi->unit_price == $oi->item->operator_price
+                                  ? 'operator'
+                                  : ($oi->unit_price == $oi->item->base_price ? 'base' : 'regular');
+                        @endphp
+                        <tr class="item-row">
+                            <input type="hidden" name="order_item_id[]" value="{{ $oi->id }}">
+                            <td>
+                                <select name="item_id[]" class="form-select item-select" required onchange="updateRow(this)">
+                                    <option value="" disabled>Select item…</option>
+                                    @foreach($items as $itm)
+                                        <option value="{{ $itm->id }}"
+                                                data-price="{{ $itm->price }}"
+                                                data-op-price="{{ $itm->operator_price }}"
+                                                data-base-price="{{ $itm->base_price }}"
+                                                {{ $oi->item_id == $itm->id ? 'selected' : '' }}>
+                                            {{ $itm->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td><input type="text" class="form-control line-price-reg"  readonly></td>
+                            <td><input type="text" class="form-control line-price-op"   readonly></td>
+                            <td><input type="text" class="form-control line-price-base" readonly></td>
+                            <td>
+                                <select name="price_type[]" class="form-select price-type" onchange="updateRow(this)">
+                                    <option value="regular" {{ $type=='regular'?  'selected':'' }}>Regular</option>
+                                    <option value="operator"{{ $type=='operator'? 'selected':'' }}>Operator</option>
+                                    <option value="base"    {{ $type=='base'?     'selected':'' }}>Base</option>
+                                </select>
+                            </td>
+                            <td><input type="number" name="quantity[]" min="1"
+                                       class="form-control line-quantity" required
+                                       value="{{ old("quantity.$i", $oi->quantity) }}"
+                                       onchange="updateRow(this)" oninput="updateRow(this)"></td>
+                            <td><input type="number" name="discount[]" step="0.01" min="0" max="100"
+                                       class="form-control line-discount"
+                                       value="{{ old("discount.$i", $oi->discount) }}"
+                                       onchange="updateRow(this)" oninput="updateRow(this)"></td>
+                            <td><input type="text" name="line_total[]" class="form-control line-total"
+                                       value="{{ number_format($oi->line_total,2) }}" readonly></td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    @endforeach
+                @endif
             </tbody>
         </table>
         <button type="button" class="btn btn-sm btn-outline-secondary" id="add-item-btn">
@@ -142,24 +168,22 @@
         </button>
     </div>
 
-    {{-- 4) Totals & Paid --}}
+    {{-- 4) Totals & Payments --}}
     @php
-        $subtotal = $sale->orderItems->sum(fn($oi) => $oi->line_total);
-        $beforeOutstanding = max(0, $subtotal - $sale->paid_amount);
+        $initialSubtotal = $sale->orderItems->sum(fn($oi) => $oi->line_total);
+        $existingPaid    = $sale->paid_amount;
     @endphp
     <div class="row gy-3">
         <div class="col-md-4">
-            <label class="form-label">Subtotal ($)</label>
-            <input type="text" name="subtotal" id="subtotal"
-                   class="form-control" value="{{ number_format($subtotal,2) }}" readonly>
+            <label class="form-label">Subtotal</label>
+            <input type="text" id="subtotal" class="form-control" value="{{ number_format($initialSubtotal,2) }}" readonly>
         </div>
         <div class="col-md-4">
-            <label class="form-label">Existing Paid ($)</label>
-            <input type="text" class="form-control" readonly
-                   value="{{ number_format($sale->paid_amount,2) }}">
+            <label class="form-label">Already Paid</label>
+            <input type="text" class="form-control" value="{{ number_format($existingPaid,2) }}" readonly>
         </div>
         <div class="col-md-4">
-            <label class="form-label">New Payment ($)</label>
+            <label class="form-label">New Payment</label>
             <input type="number" name="paid" id="paid_amount"
                    class="form-control"
                    value="{{ old('paid',0) }}"
@@ -167,12 +191,12 @@
                    oninput="recalcAll()">
         </div>
         <div class="col-md-4">
-            <label class="form-label">Outstanding Before ($)</label>
+            <label class="form-label">Outstanding Before</label>
             <input type="text" class="form-control"
-                   value="{{ number_format($beforeOutstanding,2) }}" readonly>
+                   value="{{ number_format(max(0,$initialSubtotal-$existingPaid),2) }}" readonly>
         </div>
         <div class="col-md-4">
-            <label class="form-label">Outstanding After ($)</label>
+            <label class="form-label">Outstanding After</label>
             <input type="text" id="outstanding_after" class="form-control" readonly>
         </div>
     </div>
@@ -180,15 +204,16 @@
     {{-- 5) Sale Date --}}
     <div class="mb-3 mt-4">
         <label class="form-label">Sale Date</label>
-        <input type="date"
-               name="sale_date"
-               class="form-control"
+        <input type="date" name="sale_date"
+               class="form-control @error('sale_date') is-invalid @enderror"
                value="{{ old('sale_date', $sale->sale_date) }}"
                required>
+        @error('sale_date')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
     </div>
 
-    {{-- Submit / Cancel --}}
-    <button class="btn btn-primary">Update Sale</button>
+    <button type="submit" class="btn btn-primary">Update Sale</button>
     <a href="{{ route('sales.index') }}" class="btn btn-secondary">Cancel</a>
 </form>
 
@@ -209,9 +234,9 @@
           @endforeach
         </select>
       </td>
-      <td class="text-end"><input type="text" class="form-control line-price-reg" readonly></td>
-      <td class="text-end"><input type="text" class="form-control line-price-op" readonly></td>
-      <td class="text-end"><input type="text" class="form-control line-price-base" readonly></td>
+      <td><input type="text" class="form-control line-price-reg"  readonly></td>
+      <td><input type="text" class="form-control line-price-op"   readonly></td>
+      <td><input type="text" class="form-control line-price-base" readonly></td>
       <td>
         <select name="price_type[]" class="form-select price-type" onchange="updateRow(this)">
           <option value="regular" selected>Regular</option>
@@ -219,17 +244,13 @@
           <option value="base">Base</option>
         </select>
       </td>
-      <td class="text-center">
-        <input type="number" name="quantity[]" value="1" min="1"
-               class="form-control line-quantity"
-               onchange="updateRow(this)" oninput="updateRow(this)" required>
-      </td>
-      <td class="text-center">
-        <input type="number" name="discount[]" value="0" step="0.01" min="0" max="100"
-               class="form-control line-discount"
-               onchange="updateRow(this)" oninput="updateRow(this)">
-      </td>
-      <td class="text-end"><input type="text" name="line_total[]" class="form-control line-total" readonly></td>
+      <td><input type="number" name="quantity[]" value="1" min="1"
+                 class="form-control line-quantity"
+                 onchange="updateRow(this)" oninput="updateRow(this)" required></td>
+      <td><input type="number" name="discount[]" value="0" step="0.01" min="0" max="100"
+                 class="form-control line-discount"
+                 onchange="updateRow(this)" oninput="updateRow(this)"></td>
+      <td><input type="text" name="line_total[]" class="form-control line-total" readonly></td>
       <td class="text-center">
         <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)">
           <i class="bi bi-trash"></i>
@@ -240,17 +261,7 @@
 </table>
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // initialize existing rows
-    document.querySelectorAll('tr.item-row').forEach(row => {
-      updateRow(row.querySelector('select.item-select'));
-    });
-    recalcAll();
-
-    // add new row
-    document.getElementById('add-item-btn')
-      .addEventListener('click', addItemRow);
-  });
+  document.getElementById('add-item-btn').addEventListener('click', addItemRow);
 
   function addItemRow() {
     const tpl = document.getElementById('item-row-template');
@@ -269,7 +280,7 @@
 
   function updateRow(el) {
     const row = el.closest('tr');
-    const opt = row.querySelector('select.item-select').selectedOptions[0];
+    const opt = row.querySelector('select.item-select').selectedOptions[0] || {};
     const reg   = parseFloat(opt.dataset.price     || 0);
     const op    = parseFloat(opt.dataset.opPrice   || 0);
     const baseP = parseFloat(opt.dataset.basePrice || 0);
@@ -280,7 +291,6 @@
 
     const type = row.querySelector('.price-type').value;
     const unit = type==='operator' ? op : (type==='base' ? baseP : reg);
-
     const qty  = +row.querySelector('.line-quantity').value || 0;
     const disc = Math.min(100, Math.max(0, +row.querySelector('.line-discount').value || 0));
     const total = unit * qty * (1 - disc/100);
@@ -294,12 +304,19 @@
     document.querySelectorAll('.line-total').forEach(i => sum += +i.value || 0);
     document.getElementById('subtotal').value = sum.toFixed(2);
 
-    const existingPaid = parseFloat("{{ $sale->paid_amount }}")||0;
-    const newPaid      = +document.getElementById('paid_amount').value||0;
+    const existingPaid = parseFloat("{{ $existingPaid }}") || 0;
+    const newPaid      = +document.getElementById('paid_amount').value || 0;
     const beforeOut    = sum - existingPaid;
     const afterOut     = Math.max(0, beforeOut - newPaid);
 
     document.getElementById('outstanding_after').value = afterOut.toFixed(2);
   }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // initialize all existing rows
+    document.querySelectorAll('.item-row select.item-select')
+            .forEach(el => updateRow(el));
+    recalcAll();
+  });
 </script>
 @endsection

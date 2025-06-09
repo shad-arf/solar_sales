@@ -50,7 +50,7 @@
                         <a href="{{ route('sales.show', $sale->id) }}"
                            class="btn btn-sm btn-outline-primary"
                            title="View / Print Invoice">
-                            <i class="bi bi-receipt"></i> Invoice
+                            <i class="bi bi-receipt"></i>
                         </a>
                     @else
                         <span class="text-muted">—</span>
@@ -76,26 +76,26 @@
                         <a href="{{ route('sales.edit', $sale->id) }}"
                            class="btn btn-sm btn-primary"
                            title="Edit Sale">
-                            <i class="bi bi-pencil-square"> edit </i>
+                            <i class="bi bi-pencil-square">  </i>
                         </a>
                         <form action="{{ route('sales.destroy', $sale->id) }}" method="POST" class="d-inline"
                               onsubmit="return confirm('Soft delete this sale?');">
                             @csrf
                             @method('DELETE')
                             <button class="btn btn-sm btn-danger" title="Soft Delete">
-                                <i class="bi bi-trash">delete</i>
+                                <i class="bi bi-trash"></i>
                             </button>
                         </form>
                         <a href="{{ route('sales.history', $sale->customer_id) }}"
                            class="btn btn-sm btn-info"
                            title="View Customer History">
-                            <i class="bi bi-clock-history">history</i>
+                            <i class="bi bi-clock-history"></i>
                         </a>
                         <form action="{{ route('customers.clearLoan', $sale->customer_id) }}" method="POST"
                               class="d-inline" onsubmit="return confirm('Clear all loan for this customer?');">
                             @csrf
                             <button class="btn btn-sm btn-warning" title="Clear Loan">
-                                <i class="bi bi-cash-stack">clean loan</i>
+                                <i class="bi bi-cash-stack"></i>
                             </button>
                         </form>
                     @endif
