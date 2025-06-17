@@ -155,7 +155,7 @@ class SaleController extends Controller
         return view('sales.edit', compact('sale', 'items', 'customers', 'payments'));
     }
 
-public function update(Request $request, Sale $sale)
+    public function update(Request $request, Sale $sale)
 {
     $validated = $request->validate([
         'customer_id'     => 'required|exists:customers,id',
@@ -163,72 +163,110 @@ public function update(Request $request, Sale $sale)
         'sale_date'       => 'required|date',
         'item_id'         => 'required|array|min:1',
         'item_id.*'       => 'required|exists:items,id',
+        'price_type'      => 'required|array', // Added validation
+        'price_type.*'    => 'required|in:regular,operator,base', // Added validation
         'quantity'        => 'required|array',
         'quantity.*'      => 'required|integer|min:1',
         'line_discount'   => 'nullable|array',
         'line_discount.*' => 'nullable|numeric|min:0|max:100',
-        'line_total'      => 'required|array',
-        'line_total.*'    => 'required|numeric|min:0',
-        'paid'            => 'nullable|numeric', // allow negative too
+        'paid'            => 'nullable|numeric',
     ]);
 
     DB::beginTransaction();
 
     try {
-        // 1) Restore stock from old order items
-        foreach ($sale->orderItems as $oldOrder) {
-            Item::find($oldOrder->item_id)?->increment('quantity', $oldOrder->quantity);
+        // 1) Calculate stock adjustments without changing database
+        $stockAdjustments = [];
+        $oldItems = $sale->orderItems;
+
+        // Track old quantities
+        foreach ($oldItems as $oldOrder) {
+            $stockAdjustments[$oldOrder->item_id] = ($stockAdjustments[$oldOrder->item_id] ?? 0) + $oldOrder->quantity;
         }
 
-        // 2) Update the Sale’s basic fields (customer, code, date)
+        // Track new quantities
+        foreach ($validated['item_id'] as $index => $itemId) {
+            $quantity = $validated['quantity'][$index];
+            $stockAdjustments[$itemId] = ($stockAdjustments[$itemId] ?? 0) - $quantity;
+        }
+
+        // 2) Validate stock availability before making changes
+        foreach ($stockAdjustments as $itemId => $adjustment) {
+            if ($adjustment < 0) { // Only check when we need to remove stock
+                $item = Item::findOrFail($itemId);
+                $requiredStock = abs($adjustment);
+
+                if ($item->quantity < $requiredStock) {
+                    throw new \Exception("Not enough stock for {$item->name}. Available: {$item->quantity}, Needed: {$requiredStock}");
+                }
+            }
+        }
+
+        // 3) Perform actual stock adjustments
+        foreach ($stockAdjustments as $itemId => $adjustment) {
+            if ($adjustment !== 0) {
+                $item = Item::find($itemId);
+                $item->increment('quantity', $adjustment);
+            }
+        }
+
+        // 4) Update the Sale's basic fields
         $sale->update([
             'customer_id' => $validated['customer_id'],
             'code'        => $validated['code'],
             'sale_date'   => $validated['sale_date'],
         ]);
 
-        // 3) Delete old orderItems
+        // 5) Delete old orderItems
         $sale->orderItems()->delete();
 
-        // 4) Create new orderItems & decrement stock
+        // 6) Create new orderItems
         $newSubtotal = 0;
-        foreach ($validated['item_id'] as $index => $itemId) {
-            $quantity  = $validated['quantity'][$index];
-            $discount  = $validated['line_discount'][$index] ?? 0;
-            $lineTotal = $validated['line_total'][$index];
-            $item      = Item::findOrFail($itemId);
 
-            if ($item->quantity < $quantity) {
-                throw new \Exception("Not enough stock for item: {$item->name} (Available: {$item->quantity})");
-            }
+        foreach ($validated['item_id'] as $index => $itemId) {
+            $quantity = $validated['quantity'][$index];
+            $discount = $validated['line_discount'][$index] ?? 0;
+            $priceType = $validated['price_type'][$index];
+            $item = Item::findOrFail($itemId);
+
+            // Determine unit price based on price type
+            $unitPrice = match($priceType) {
+                'operator' => $item->operator_price,
+                'base' => $item->base_price,
+                default => $item->price,
+            };
+
+            $lineTotal = $unitPrice * $quantity * (1 - $discount/100);
+            $lineTotal = round($lineTotal, 2);
+            $newSubtotal += $lineTotal;
 
             Order::create([
                 'sale_id'       => $sale->id,
                 'item_id'       => $itemId,
                 'quantity'      => $quantity,
-                'unit_price'    => $item->price,
+                'unit_price'    => $unitPrice, // Store actual price used
+                'price_type'    => $priceType, // Store price type
                 'line_discount' => $discount,
                 'line_total'    => $lineTotal,
             ]);
-
-            $item->decrement('quantity', $quantity);
-            $newSubtotal += $lineTotal;
         }
 
-        // 5) Update sale 'total' to new subtotal
+        // 7) Update sale total
         $sale->update(['total' => $newSubtotal]);
 
-        // 6) If user entered a new payment (positive or negative), record it
-        if (isset($validated['paid']) && floatval($validated['paid']) != 0) {
+        // 8) Handle new payments
+        $newPayment = floatval($validated['paid'] ?? 0);
+
+        if ($newPayment != 0) {
             Payment::create([
                 'sale_id' => $sale->id,
-                'amount'  => $validated['paid'],
+                'amount'  => $newPayment,
                 'paid_at' => now(),
-                'note'    => null,
+                'note'    => 'Additional payment from edit',
             ]);
 
-            // increment() accepts a negative value to subtract
-            $sale->increment('paid_amount', $validated['paid']);
+            $sale->paid_amount += $newPayment;
+            $sale->save();
         }
 
         DB::commit();
@@ -242,7 +280,6 @@ public function update(Request $request, Sale $sale)
             ->withInput();
     }
 }
-
 
 
     /**
