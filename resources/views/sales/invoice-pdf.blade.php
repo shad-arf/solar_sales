@@ -5,7 +5,7 @@
     <title>Invoice #{{ $sale->code }}</title>
     <style>
         body {
-            font-family: sans-serif;
+            font-family: DejaVu Sans, sans-serif;
             font-size: 12px;
             padding: 30px;
             color: #000;
