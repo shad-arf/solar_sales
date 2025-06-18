@@ -252,7 +252,6 @@ class SaleController extends Controller
             $sale->update(['total' => $subtotal]);
 
             $newPay = floatval($validated['paid'] ?? 0);
-            if ($newPay > 0) {
                 Payment::create([
                     'sale_id' => $sale->id,
                     'amount'  => $newPay,
@@ -261,7 +260,6 @@ class SaleController extends Controller
                 ]);
 
                 $sale->increment('paid_amount', $newPay);
-            }
 
             DB::commit();
 
