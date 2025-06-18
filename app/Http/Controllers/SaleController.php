@@ -234,10 +234,10 @@ class SaleController extends Controller
                     default    => $item->price,
                 };
 
-                $lineTotal = round($unit * $qty * (1 - $disc / 100));
+                dd($lineTotal);
+                $lineTotal = round($unit ) ;
                 $subtotal += $lineTotal;
 
-                dd($subtotal);
                 Order::create([
                     'sale_id'       => $sale->id,
                     'item_id'       => $itemId,
