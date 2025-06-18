@@ -237,6 +237,7 @@ class SaleController extends Controller
                 $lineTotal = round($unit ) ;
                 $subtotal += $lineTotal;
 
+                dd($subtotal);
                 Order::create([
                     'sale_id'       => $sale->id,
                     'item_id'       => $itemId,
