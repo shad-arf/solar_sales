@@ -234,7 +234,7 @@ class SaleController extends Controller
                     default    => $item->price,
                 };
 
-                $lineTotal = round($unit ) ;
+                $lineTotal = round($unit * $qty * (1 - $disc / 100));
                 $subtotal += $lineTotal;
 
                 dd($subtotal);
