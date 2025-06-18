@@ -126,7 +126,7 @@
         </div>
         <div class="col-md-4">
             <label class="form-label">New Payment</label>
-            <input type="number" name="paid" id="paid_amount" class="form-control" value="{{ old('paid',0) }}" step="0.01" min="0" oninput="recalcAll()">
+            <input type="number" name="paid" id="paid_amount" class="form-control" value="{{ old('paid',0) }}" step="0.01"  oninput="recalcAll()">
         </div>
         <div class="col-md-4">
             <label class="form-label">Outstanding Before</label>

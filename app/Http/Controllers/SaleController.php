@@ -174,7 +174,7 @@ class SaleController extends Controller
             'line_discount'   => 'nullable|array',
             'line_discount.*' => 'nullable|numeric|min:0|max:100',
 
-            'paid'            => 'nullable|numeric|min:0',
+            'paid'            => 'nullable|numeric',
         ]);
 
         DB::beginTransaction();
