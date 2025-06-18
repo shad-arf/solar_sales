@@ -34,31 +34,42 @@
         .text-end { text-align: right; }
         .text-muted { color: #777; }
         .borderless td { border: none !important; }
+        /* ensure right-to-left support if needed */
+        [dir="rtl"] { direction: rtl; }
     </style>
 </head>
 <body>
-    <div class="invoice-wrapper">
-        {{-- Logo at the top center --}}
-         <table style="width: 100%; margin-bottom: 20px; border: none;">
+
+    {{-- Download PDF Button --}}
+    <div style="text-align: right; margin-bottom: 15px;">
+        <button onclick="generatePDF()" style="padding: 8px 16px; font-size: 14px;">
+            📄 Download PDF
+        </button>
+    </div>
+
+    {{-- Invoice Content --}}
+    <div id="invoice-wrapper" class="invoice-wrapper">
+        {{-- Logo & Company Info --}}
+        <table style="width: 100%; margin-bottom: 20px; border: none;">
             <tr>
-                <td  style="vertical-align: top; width: 50%; border: none;">
-                    <img src="{{ public_path('images/logo.jpg') }}" alt="Company Logo" style="max-width: 150px;">
+                <td style="vertical-align: top; width: 50%; border: none;">
+                    <img src="https://photon.shadarf.dev/images/logo.jpg" alt="Company Logo" style="max-width: 150px;">
                 </td>
-                <td style="vertical-align: top;padding-top: text-align: right; width: 50%; border: none;">
+                <td style="vertical-align: top; text-align: right; width: 50%; border: none;">
                     <h2>Photon</h2>
                     <p>Main Street Mosul, Kahabt</p>
                     <p>Phone: (964) 7709647036</p>
                 </td>
-
             </tr>
+        </table>
 
-         </table>
-
+        {{-- Invoice Heading --}}
         <div class="text-center mb-4">
             <h1>INVOICE</h1>
             <p class="text-muted">Invoice #{{ $sale->code }}</p>
         </div>
 
+        {{-- From / Bill To --}}
         <table style="width: 100%; margin-bottom: 20px; border: none;">
             <tr>
                 <td style="vertical-align: top; width: 50%; border: none;">
@@ -74,14 +85,14 @@
                     <strong>{{ $sale->customer->name ?? '— Deleted Customer —' }}</strong><br>
                     {{ $sale->customer->address ?? '' }}<br>
                     Phone: {{ $sale->customer->phone ?? '' }}<br>
-                    Email: {{ $sale->customer->email ?? '' }}<br>
-                    <br>
+                    Email: {{ $sale->customer->email ?? '' }}<br><br>
                     <strong>Invoice Date:</strong> {{ \Carbon\Carbon::parse($sale->sale_date)->format('Y-m-d') }}<br>
                     <strong>Invoice #:</strong> {{ $sale->code }}
                 </td>
             </tr>
         </table>
 
+        {{-- Line Items --}}
         <table>
             <thead>
                 <tr>
@@ -116,6 +127,7 @@
             </tbody>
         </table>
 
+        {{-- Totals --}}
         @php
             $discountTotal = (float) $sale->discount;
             $totalAmount   = (float) $sale->total;
@@ -149,12 +161,42 @@
                 </td>
             </tr>
         </table>
-
         <div style="clear: both;"></div>
 
         <p class="text-muted text-center mt-5">
             Thank you for your business! Contact us at info@yourcompany.com.
         </p>
     </div>
+
+    {{-- Include html2canvas & jsPDF --}}
+    <script src="https://unpkg.com/html2canvas@1.0.0-rc.5/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        async function generatePDF() {
+            // Grab the invoice element
+            const invoice = document.getElementById('invoice-wrapper');
+
+            // Render to canvas
+            const canvas = await html2canvas(invoice, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+
+            // Create jsPDF instance
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            // Calculate dimensions
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const imgProps  = pdf.getImageProperties(imgData);
+            const pdfHeight = (imgProps.height * pageWidth) / imgProps.width;
+
+            // Add image & save
+            pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pdfHeight);
+            pdf.save(`invoice-{{ $sale->code }}.pdf`);
+        }
+    </script>
 </body>
 </html>

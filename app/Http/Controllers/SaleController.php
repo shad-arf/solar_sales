@@ -18,12 +18,12 @@ class SaleController extends Controller
      */
     public function downloadPDF(Sale $sale)
     {
-        $sale->load(['orderItems.item', 'customer', 'payments']);
+     // eager‑load relations to avoid N+1
+        $sale->load(['customer', 'orderItems.item']);
 
-        $pdf = Pdf::loadView('sales.invoice-pdf', compact('sale'))
-                  ->setPaper('A4', 'portrait');
-
-        return $pdf->download('invoice-' . $sale->code . '.pdf');
+        return view('sales.invoice-pdf', [
+            'sale' => $sale,
+        ]);
     }
 
     /**
