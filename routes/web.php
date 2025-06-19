@@ -21,6 +21,74 @@ Route::get('/', fn () => redirect()->route('items.index'));
 
 Route::get('/sales/{sale}/pdf', [SaleController::class, 'downloadPdf'])->name('sales.downloadPdf');
 
+
+Route::prefix('items')->name('items.')->group(function () {
+    Route::get('/', [ItemController::class, 'index'])->name('index');
+    Route::get('/create', [ItemController::class, 'create'])->name('create');
+    Route::post('/', [ItemController::class, 'store'])->name('store');
+    Route::get('/{item}', [ItemController::class, 'show'])->name('show');
+    Route::get('/{item}/edit', [ItemController::class, 'edit'])->name('edit');
+    Route::put('/{item}', [ItemController::class, 'update'])->name('update');
+    Route::delete('/{item}', [ItemController::class, 'destroy'])->name('destroy');
+
+    // New export and stock management routes
+    Route::get('/export/csv', [ItemController::class, 'export'])->name('export');
+    Route::patch('/{item}/update-stock', [ItemController::class, 'updateStock'])->name('updateStock');
+    Route::post('/bulk-stock-update', [ItemController::class, 'bulkStockUpdate'])->name('bulkStockUpdate');
+
+    // Dashboard route (optional)
+    Route::get('/dashboard', [ItemController::class, 'dashboard'])->name('dashboard');
+
+    // Existing additional routes
+    Route::get('/status/low-stock', [ItemController::class, 'lowStock'])->name('lowStock');
+    Route::get('/status/out-of-stock', [ItemController::class, 'outOfStock'])->name('outOfStock');
+    Route::get('/status/trashed', [ItemController::class, 'trashed'])->name('trashed');
+    Route::post('/{id}/restore', [ItemController::class, 'restore'])->name('restore');
+    Route::delete('/{id}/force-delete', [ItemController::class, 'forceDelete'])->name('forceDelete');
+});
+
+Route::prefix('customers')->name('customers.')->group(function () {
+    Route::get('/', [CustomerController::class, 'index'])->name('index');
+    Route::get('/create', [CustomerController::class, 'create'])->name('create');
+    Route::post('/', [CustomerController::class, 'store'])->name('store');
+    Route::get('/{customer}/edit', [CustomerController::class, 'edit'])->name('edit');
+    Route::put('/{customer}', [CustomerController::class, 'update'])->name('update');
+    Route::delete('/{customer}', [CustomerController::class, 'destroy'])->name('destroy');
+
+    // New export route
+    Route::get('/export/csv', [CustomerController::class, 'export'])->name('export');
+
+    // Dashboard route (optional)
+    Route::get('/dashboard', [CustomerController::class, 'dashboard'])->name('dashboard');
+
+    // Existing additional routes
+    Route::get('/trashed', [CustomerController::class, 'trashed'])->name('trashed');
+    Route::post('/{id}/restore', [CustomerController::class, 'restore'])->name('restore');
+    Route::delete('/{id}/force-delete', [CustomerController::class, 'forceDelete'])->name('forceDelete');
+    Route::post('/{customer}/clear-loan', [CustomerController::class, 'clearLoan'])->name('clearLoan');
+});
+Route::prefix('sales')->name('sales.')->group(function () {
+    Route::get('/', [SaleController::class, 'index'])->name('index');
+    Route::get('/create', [SaleController::class, 'create'])->name('create');
+    Route::post('/', [SaleController::class, 'store'])->name('store');
+    Route::get('/{sale}', [SaleController::class, 'show'])->name('show');
+    Route::get('/{sale}/edit', [SaleController::class, 'edit'])->name('edit');
+    Route::put('/{sale}', [SaleController::class, 'update'])->name('update');
+    Route::delete('/{sale}', [SaleController::class, 'destroy'])->name('destroy');
+
+    // New export route
+    Route::get('/export/csv', [SaleController::class, 'export'])->name('export');
+
+    // Existing additional routes
+    Route::post('/{id}/restore', [SaleController::class, 'restore'])->name('restore');
+    Route::delete('/{id}/force-delete', [SaleController::class, 'forceDelete'])->name('forceDelete');
+    Route::get('/customer/{customer}/history', [SaleController::class, 'history'])->name('history');
+    Route::get('/{sale}/pdf', [SaleController::class, 'downloadPDF'])->name('downloadPDF');
+});
+
+// Customer loan clearing route
+Route::post('/customers/{customer}/clear-loan', [CustomerController::class, 'clearLoan'])->name('customers.clearLoan');
+
 // Authenticated Routes
 Route::middleware('auth')->group(function () {
     Route::get('/users', [AuthController::class, 'users'])->name('users.index');

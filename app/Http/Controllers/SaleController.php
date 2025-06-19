@@ -14,6 +14,120 @@ use Illuminate\Support\Facades\DB;
 class SaleController extends Controller
 {
     /**
+     * List all sales with search and filters
+     */
+    public function index(Request $request)
+    {
+        // Get all customers for filter dropdown
+        $customers = Customer::whereNull('deleted_at')
+                           ->orderBy('name')
+                           ->get();
+
+        // Build the query
+        $query = Sale::with(['orderItems.item', 'customer']);
+
+        // Include deleted sales if requested
+        if ($request->filled('include_deleted')) {
+            $query->withTrashed();
+        }
+
+        // Search functionality
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('code', 'LIKE', "%{$search}%")
+                  ->orWhereHas('customer', function($customerQuery) use ($search) {
+                      $customerQuery->where('name', 'LIKE', "%{$search}%");
+                  })
+                  ->orWhereHas('orderItems.item', function($itemQuery) use ($search) {
+                      $itemQuery->where('name', 'LIKE', "%{$search}%");
+                  });
+            });
+        }
+
+        // Customer filter
+        if ($request->filled('customer_id')) {
+            $query->where('customer_id', $request->customer_id);
+        }
+
+        // Date range filters
+        if ($request->filled('date_from')) {
+            $query->where('sale_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->where('sale_date', '<=', $request->date_to);
+        }
+
+        // Amount range filters
+        if ($request->filled('amount_min')) {
+            $query->where('total', '>=', $request->amount_min);
+        }
+
+        if ($request->filled('amount_max')) {
+            $query->where('total', '<=', $request->amount_max);
+        }
+
+        // Payment status filter
+        if ($request->filled('payment_status')) {
+            switch ($request->payment_status) {
+                case 'paid':
+                    $query->whereRaw('total <= paid_amount');
+                    break;
+                case 'unpaid':
+                    $query->where('paid_amount', 0);
+                    break;
+                case 'partial':
+                    $query->whereRaw('paid_amount > 0 AND paid_amount < total');
+                    break;
+                case 'overpaid':
+                    $query->whereRaw('paid_amount > total');
+                    break;
+            }
+        }
+
+        // Outstanding amount filters
+        if ($request->filled('outstanding_min')) {
+            $query->whereRaw('(total - paid_amount) >= ?', [$request->outstanding_min]);
+        }
+
+        if ($request->filled('outstanding_max')) {
+            $query->whereRaw('(total - paid_amount) <= ?', [$request->outstanding_max]);
+        }
+
+        // Sorting
+        $sortBy = $request->get('sort_by', 'sale_date');
+        $sortDirection = $request->get('sort_direction', 'desc');
+
+        switch ($sortBy) {
+            case 'customer_name':
+                $query->leftJoin('customers', 'sales.customer_id', '=', 'customers.id')
+                      ->orderBy('customers.name', $sortDirection)
+                      ->select('sales.*'); // Ensure we only select sales columns
+                break;
+            case 'total':
+                $query->orderBy('total', $sortDirection);
+                break;
+            case 'code':
+                $query->orderBy('code', $sortDirection);
+                break;
+            case 'sale_date':
+            default:
+                $query->orderBy('sale_date', $sortDirection);
+                break;
+        }
+
+        // Secondary sort by ID for consistency
+        $query->orderBy('id', 'desc');
+
+        // Pagination
+        $perPage = $request->get('per_page', 15);
+        $sales = $query->paginate($perPage);
+
+        return view('sales.index', compact('sales', 'customers'));
+    }
+
+    /**
      * Download invoice as PDF (unchanged)
      */
     public function downloadPDF(Sale $sale)
@@ -27,21 +141,6 @@ class SaleController extends Controller
     }
 
     /**
-     * List all sales
-     */
-    public function index()
-    {
-        $sales = Sale::with([
-                'orderItems.item',
-                'customer'
-            ])
-            ->orderByDesc('sale_date')
-            ->paginate(15);
-
-        return view('sales.index', compact('sales'));
-    }
-
-    /**
      * Show payment history by customer
      */
     public function history(Customer $customer)
@@ -51,7 +150,130 @@ class SaleController extends Controller
     }
 
     /**
-     * Show “Record Sale” form
+     * Export filtered sales to CSV
+     */
+    public function export(Request $request)
+    {
+        // Use the same query logic as index but without pagination
+        $query = Sale::with(['orderItems.item', 'customer']);
+
+        // Apply all the same filters...
+        if ($request->filled('include_deleted')) {
+            $query->withTrashed();
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('code', 'LIKE', "%{$search}%")
+                  ->orWhereHas('customer', function($customerQuery) use ($search) {
+                      $customerQuery->where('name', 'LIKE', "%{$search}%");
+                  })
+                  ->orWhereHas('orderItems.item', function($itemQuery) use ($search) {
+                      $itemQuery->where('name', 'LIKE', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($request->filled('customer_id')) {
+            $query->where('customer_id', $request->customer_id);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->where('sale_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->where('sale_date', '<=', $request->date_to);
+        }
+
+        if ($request->filled('amount_min')) {
+            $query->where('total', '>=', $request->amount_min);
+        }
+
+        if ($request->filled('amount_max')) {
+            $query->where('total', '<=', $request->amount_max);
+        }
+
+        if ($request->filled('payment_status')) {
+            switch ($request->payment_status) {
+                case 'paid':
+                    $query->whereRaw('total <= paid_amount');
+                    break;
+                case 'unpaid':
+                    $query->where('paid_amount', 0);
+                    break;
+                case 'partial':
+                    $query->whereRaw('paid_amount > 0 AND paid_amount < total');
+                    break;
+                case 'overpaid':
+                    $query->whereRaw('paid_amount > total');
+                    break;
+            }
+        }
+
+        // Get all results for export
+        $sales = $query->orderBy('sale_date', 'desc')->get();
+
+        $filename = 'sales_export_' . date('Y-m-d_H-i-s') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function() use ($sales) {
+            $file = fopen('php://output', 'w');
+
+            // CSV Headers
+            fputcsv($file, [
+                'Sale Date',
+                'Invoice Code',
+                'Customer Name',
+                'Items',
+                'Total Amount',
+                'Paid Amount',
+                'Outstanding Amount',
+                'Payment Status',
+                'Status'
+            ]);
+
+            foreach ($sales as $sale) {
+                $totalAmount = (float) $sale->total;
+                $paidAmount = (float) $sale->paid_amount;
+                $outstandingAmt = $totalAmount - $paidAmount;
+                $itemsDisplay = $sale->orderItems->map(fn($oi) => "{$oi->item->name} (×{$oi->quantity})")->implode(', ');
+
+                // Determine payment status
+                if ($paidAmount == 0) {
+                    $paymentStatus = 'Unpaid';
+                } elseif ($paidAmount >= $totalAmount) {
+                    $paymentStatus = $paidAmount > $totalAmount ? 'Overpaid' : 'Paid';
+                } else {
+                    $paymentStatus = 'Partial';
+                }
+
+                fputcsv($file, [
+                    $sale->sale_date,
+                    $sale->code,
+                    $sale->customer->name ?? 'Deleted Customer',
+                    $itemsDisplay,
+                    number_format($totalAmount, 2),
+                    number_format($paidAmount, 2),
+                    number_format($outstandingAmt, 2),
+                    $paymentStatus,
+                    $sale->trashed() ? 'Deleted' : 'Active'
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Show "Record Sale" form
      */
     public function create()
     {
@@ -62,7 +284,6 @@ class SaleController extends Controller
 
         return view('sales.create', compact('items', 'customers', 'saleId'));
     }
-
 
     /**
      * Store a new sale, plus initial payment record.
@@ -143,8 +364,9 @@ class SaleController extends Controller
             ->withInput();
     }
 }
+
     /**
-     * Show “Edit Sale” form, including item list and payment history
+     * Show "Edit Sale" form, including item list and payment history
      */
     public function edit(Sale $sale)
     {
@@ -154,6 +376,10 @@ class SaleController extends Controller
 
         return view('sales.edit', compact('sale', 'items', 'customers', 'payments'));
     }
+
+    /**
+     * Update sale with comprehensive validation and stock management
+     */
     public function update(Request $request, Sale $sale)
     {
         // 1) Validate all incoming data, including line_totals
