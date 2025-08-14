@@ -292,13 +292,18 @@ class SaleController extends Controller
 {
     $validated = $request->validate([
         'customer_id'       => 'required|exists:customers,id',
+        'customer_type'     => 'required|in:end_user,installer,reseller',
         'sale_date'         => 'required|date',
         'paid_amount'       => 'required|numeric|min:0',
         'subtotal'          => 'required|numeric|min:0',
+        'discount'          => 'nullable|numeric|min:0',
         'code'              => 'required|unique:sales,code',
 
         'item_id'           => 'required|array|min:1',
         'item_id.*'         => 'required|exists:items,id',
+
+        'price_type'        => 'required|array',
+        'price_type.*'      => 'required|in:regular,operator,base',
 
         'quantity'          => 'required|array',
         'quantity.*'        => 'required|integer|min:1',
@@ -316,9 +321,11 @@ class SaleController extends Controller
         // 1) Create sale
         $sale = Sale::create([
             'customer_id' => $validated['customer_id'],
+            'customer_type' => $validated['customer_type'],
             'code'        => $validated['code'],
             'sale_date'   => $validated['sale_date'],
             'total'       => $validated['subtotal'],
+            'discount'    => $validated['discount'] ?? 0,
             'paid_amount' => $validated['paid_amount'],
         ]);
 
@@ -327,17 +334,26 @@ class SaleController extends Controller
             $quantity   = $validated['quantity'][$i];
             $discount   = $validated['line_discount'][$i] ?? 0;
             $lineTotal  = $validated['line_total'][$i];
+            $priceType  = $validated['price_type'][$i];
 
             $item = Item::findOrFail($itemId);
             if ($item->quantity < $quantity) {
                 throw new \Exception("Not enough stock for {$item->name}. Available: {$item->quantity}");
             }
 
+            // Determine unit price based on price type
+            $unitPrice = match($priceType) {
+                'operator' => $item->operator_price ?: $item->price,
+                'base' => $item->base_price ?: $item->price,
+                default => $item->price
+            };
+
             Order::create([
                 'sale_id'       => $sale->id,
                 'item_id'       => $itemId,
                 'quantity'      => $quantity,
-                'unit_price'    => $item->price,
+                'unit_price'    => $unitPrice,
+                'price_type'    => $priceType,
                 'line_discount' => $discount,
                 'line_total'    => $lineTotal,
             ]);
@@ -385,8 +401,10 @@ class SaleController extends Controller
         // 1) Validate all incoming data, including line_totals
         $validated = $request->validate([
             'customer_id'     => 'required|exists:customers,id',
+            'customer_type'   => 'required|in:end_user,installer,reseller',
             'code'            => "required|unique:sales,code,{$sale->id}",
             'sale_date'       => 'required|date',
+            'discount'        => 'nullable|numeric|min:0',
 
             'item_id'         => 'required|array|min:1',
             'item_id.*'       => 'required|exists:items,id',
@@ -442,8 +460,10 @@ class SaleController extends Controller
             // 3) Update sale core fields
             $sale->update([
                 'customer_id' => $validated['customer_id'],
+                'customer_type' => $validated['customer_type'],
                 'code'        => $validated['code'],
                 'sale_date'   => $validated['sale_date'],
+                'discount'    => $validated['discount'] ?? 0,
             ]);
 
             // 4) Remove old order items and rebuild
@@ -479,7 +499,10 @@ class SaleController extends Controller
             }
 
             // 5) Update totals and handle payment
-            $sale->update(['total' => $subtotal]);
+            // Apply discount to get final total
+            $discount = $validated['discount'] ?? 0;
+            $finalTotal = max(0, $subtotal - $discount);
+            $sale->update(['total' => $finalTotal]);
 
             $newPay = floatval($validated['paid'] ?? 0);
             if ($newPay > 0) {

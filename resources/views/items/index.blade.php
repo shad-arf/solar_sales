@@ -85,7 +85,7 @@
                     <select class="form-select" id="sort_by" name="sort_by">
                         <option value="name" {{ request('sort_by', 'name') == 'name' ? 'selected' : '' }}>Name</option>
                         <option value="code" {{ request('sort_by') == 'code' ? 'selected' : '' }}>Code</option>
-                        <option value="price" {{ request('sort_by') == 'price' ? 'selected' : '' }}>Price</option>
+                        <option value="price" {{ request('sort_by') == 'price' ? 'selected' : '' }}>End user</option>
                         <option value="quantity" {{ request('sort_by') == 'quantity' ? 'selected' : '' }}>Quantity</option>
                         <option value="created_at" {{ request('sort_by') == 'created_at' ? 'selected' : '' }}>Date Added</option>
                     </select>
@@ -165,9 +165,9 @@
                     <label for="price_type" class="form-label">Price Type</label>
                     <select class="form-select" id="price_type" name="price_type">
                         <option value="">All Prices</option>
-                        <option value="regular" {{ request('price_type') == 'regular' ? 'selected' : '' }}>Regular Price</option>
-                        <option value="base" {{ request('price_type') == 'base' ? 'selected' : '' }}>Base Price</option>
-                        <option value="operator" {{ request('price_type') == 'operator' ? 'selected' : '' }}>Operator Price</option>
+                        <option value="regular" {{ request('price_type') == 'regular' ? 'selected' : '' }}>End user</option>
+                        <option value="base" {{ request('price_type') == 'base' ? 'selected' : '' }}>Reseller</option>
+                        <option value="operator" {{ request('price_type') == 'operator' ? 'selected' : '' }}>Installer</option>
                     </select>
                 </div>
 
@@ -379,12 +379,12 @@
                     </td>
                     <td class="text-end">
                         <div class="small">
-                            <div><strong>${{ number_format($item->price, 2) }}</strong> <span class="text-muted">Regular</span></div>
+                            <div><strong>${{ number_format($item->price, 2) }}</strong> <span class="text-muted">End user</span></div>
                             @if($item->base_price)
-                                <div><span class="text-info">${{ number_format($item->base_price, 2) }}</span> <span class="text-muted">Base</span></div>
+                                <div><span class="text-info">${{ number_format($item->base_price, 2) }}</span> <span class="text-muted">Reseller</span></div>
                             @endif
                             @if($item->operator_price)
-                                <div><span class="text-warning">${{ number_format($item->operator_price, 2) }}</span> <span class="text-muted">Operator</span></div>
+                                <div><span class="text-warning">${{ number_format($item->operator_price, 2) }}</span> <span class="text-muted">Installer</span></div>
                             @endif
                         </div>
                     </td>
@@ -441,13 +441,13 @@
                                 <a href="{{ route('items.edit', $item) }}"
                                    class="btn btn-sm btn-outline-primary"
                                    title="Edit Item">
-                                    <i class="bi bi-pencil"></i>
+                                    <i class="bi bi-pencil-square"></i>
                                 </a>
                                 <button type="button"
                                         class="btn btn-sm btn-outline-secondary"
                                         title="Quick Stock Update"
                                         onclick="showStockModal({{ $item->id }}, '{{ $item->name }}', {{ $item->quantity }})">
-                                    <i class="bi bi-plus-minus"></i>
+                                    <i class="bi bi-box-arrow-up-right"></i>
                                 </button>
                                 <form action="{{ route('items.destroy', $item) }}" method="POST" class="d-inline"
                                       onsubmit="return confirm('Soft delete {{ $item->name }}?');">
@@ -524,6 +524,7 @@
                         <label for="note" class="form-label">Note (Optional)</label>
                         <input type="text" class="form-control" id="note" name="note" placeholder="Reason for stock change">
                     </div>
+                    <div id="stock_preview" class="alert" style="display: none;"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -535,6 +536,7 @@
 </div>
 
 <script>
+// Main functionality
 function toggleAdvanced() {
     const advanced = document.getElementById('advancedFilters');
     const btn = event.target.closest('button');
@@ -563,53 +565,60 @@ function showStockModal(itemId, itemName, currentStock) {
     document.getElementById('stockForm').action = `/items/${itemId}/update-stock`;
     document.getElementById('quantity').value = '';
     document.getElementById('note').value = '';
+    document.getElementById('stock_action').value = 'add';
+    
+    // Hide preview
+    const preview = document.getElementById('stock_preview');
+    preview.style.display = 'none';
 
     const modal = new bootstrap.Modal(document.getElementById('stockModal'));
     modal.show();
 }
 
-// Auto-submit on field changes
-document.addEventListener('DOMContentLoaded', function() {
-    const autoSubmitFields = ['stock_status', 'sort_by', 'sort_direction', 'per_page', 'price_type'];
+function updateStockPreview() {
+    const action = document.getElementById('stock_action').value;
+    const quantity = parseInt(document.getElementById('quantity').value) || 0;
+    const currentStock = parseInt(document.getElementById('current_stock').value) || 0;
+    const preview = document.getElementById('stock_preview');
 
-    autoSubmitFields.forEach(fieldName => {
-        const field = document.getElementById(fieldName);
-        if (field) {
-            field.addEventListener('change', function() {
-                document.getElementById('searchForm').submit();
-            });
-        }
-    });
-
-    // Show advanced filters if any advanced field has value
-    const advancedFields = ['include_deleted', 'created_from', 'created_to', 'price_type'];
-    const hasAdvancedValue = advancedFields.some(field => {
-        const element = document.querySelector(`[name="${field}"]`);
-        return element && (element.type === 'checkbox' ? element.checked : element.value);
-    });
-
-    if (hasAdvancedValue) {
-        toggleAdvanced();
+    if (quantity === 0) {
+        preview.style.display = 'none';
+        return;
     }
 
-    // Debounced search
-    const searchInput = document.getElementById('search');
-    let searchTimeout;
+    let newStock;
+    let actionText;
 
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(function() {
-                if (searchInput.value.length >= 2 || searchInput.value.length === 0) {
-                    document.getElementById('searchForm').submit();
-                }
-            }, 500);
-        });
+    switch (action) {
+        case 'add':
+            newStock = currentStock + quantity;
+            actionText = `Adding ${quantity} units`;
+            break;
+        case 'remove':
+            newStock = Math.max(0, currentStock - quantity);
+            actionText = `Removing ${quantity} units`;
+            if (currentStock < quantity) {
+                actionText += ` (limited to available stock)`;
+            }
+            break;
+        case 'set':
+            newStock = quantity;
+            actionText = `Setting stock to ${quantity} units`;
+            break;
     }
-});
-// Enhanced Item Search & Stock Management JavaScript
-// Add this to your main JavaScript file or include in the blade template
 
+    preview.innerHTML = `
+        <strong>${actionText}</strong><br>
+        Current Stock: ${currentStock} → New Stock: ${newStock}
+        ${newStock === 0 ? '<br><span class="text-danger">⚠️ This will result in zero stock</span>' : ''}
+        ${newStock < 10 && newStock > 0 ? '<br><span class="text-warning">⚠️ This will result in low stock</span>' : ''}
+    `;
+
+    preview.className = `alert ${newStock === 0 ? 'alert-danger' : (newStock < 10 ? 'alert-warning' : 'alert-success')}`;
+    preview.style.display = 'block';
+}
+
+// Auto-submit functionality and event listeners
 document.addEventListener('DOMContentLoaded', function() {
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('search');
@@ -704,6 +713,15 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleAdvanced();
     }
 
+    // Stock modal preview functionality
+    const stockActionSelect = document.getElementById('stock_action');
+    const quantityInput = document.getElementById('quantity');
+
+    if (stockActionSelect && quantityInput) {
+        stockActionSelect.addEventListener('change', updateStockPreview);
+        quantityInput.addEventListener('input', updateStockPreview);
+    }
+
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
         // Ctrl/Cmd + K to focus search
@@ -721,453 +739,7 @@ document.addEventListener('DOMContentLoaded', function() {
             searchForm.submit();
         }
     });
-
-    // Stock action predictions
-    const stockActionSelect = document.getElementById('stock_action');
-    const quantityInput = document.getElementById('quantity');
-    const currentStockInput = document.getElementById('current_stock');
-
-    if (stockActionSelect && quantityInput && currentStockInput) {
-        function updateStockPreview() {
-            const action = stockActionSelect.value;
-            const quantity = parseInt(quantityInput.value) || 0;
-            const currentStock = parseInt(currentStockInput.value) || 0;
-
-            let newStock;
-            switch (action) {
-                case 'add':
-                    newStock = currentStock + quantity;
-                    break;
-                case 'remove':
-                    newStock = Math.max(0, currentStock - quantity);
-                    break;
-                case 'set':
-                    newStock = quantity;
-                    break;
-                default:
-                    newStock = currentStock;
-            }
-
-            // Update preview (you could add a preview element)
-            const preview = document.getElementById('stock_preview');
-            if (preview) {
-                preview.textContent = `New stock will be: ${newStock}`;
-                preview.className = newStock === 0 ? 'text-danger' : (newStock < 10 ? 'text-warning' : 'text-success');
-            }
-        }
-
-        stockActionSelect.addEventListener('change', updateStockPreview);
-        quantityInput.addEventListener('input', updateStockPreview);
-    }
-
-    // Initialize tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
 });
-
-function toggleAdvanced() {
-    const advanced = document.getElementById('advancedFilters');
-    const btn = event.target.closest('button');
-
-    if (advanced.style.display === 'none') {
-        advanced.style.display = 'flex';
-        btn.innerHTML = '<i class="bi bi-gear-fill"></i> Hide Advanced';
-        btn.classList.remove('btn-outline-info');
-        btn.classList.add('btn-info');
-    } else {
-        advanced.style.display = 'none';
-        btn.innerHTML = '<i class="bi bi-gear"></i> Advanced';
-        btn.classList.remove('btn-info');
-        btn.classList.add('btn-outline-info');
-    }
-}
-
-function filterByStock(status) {
-    document.getElementById('stock_status').value = status;
-    document.getElementById('searchForm').submit();
-}
-
-function showStockModal(itemId, itemName, currentStock) {
-    document.getElementById('stockItemName').value = itemName;
-    document.getElementById('current_stock').value = currentStock;
-    document.getElementById('stockForm').action = `/items/${itemId}/update-stock`;
-    document.getElementById('quantity').value = '';
-    document.getElementById('note').value = '';
-
-    // Reset action to add
-    document.getElementById('stock_action').value = 'add';
-
-    const modal = new bootstrap.Modal(document.getElementById('stockModal'));
-    modal.show();
-}
-
-// Bulk operations
-function selectAllItems() {
-    const checkboxes = document.querySelectorAll('input[name="selected_items[]"]');
-    const selectAllCheckbox = document.getElementById('select_all');
-
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = selectAllCheckbox.checked;
-    });
-
-    updateBulkActions();
-}
-
-function updateBulkActions() {
-    const selectedCheckboxes = document.querySelectorAll('input[name="selected_items[]"]:checked');
-    const bulkActions = document.getElementById('bulk_actions');
-
-    if (bulkActions) {
-        bulkActions.style.display = selectedCheckboxes.length > 0 ? 'block' : 'none';
-    }
-}
-
-// Quick filters
-function quickFilterLowStock() {
-    document.getElementById('stock_status').value = 'low_stock';
-    document.getElementById('searchForm').submit();
-}
-
-function quickFilterOutOfStock() {
-    document.getElementById('stock_status').value = 'out_of_stock';
-    document.getElementById('searchForm').submit();
-}
-
-function quickFilterInStock() {
-    document.getElementById('stock_status').value = 'in_stock';
-    document.getElementById('searchForm').submit();
-}
-
-// Stock level color coding
-function getStockLevelClass(quantity) {
-    if (quantity === 0) return 'text-danger';
-    if (quantity < 10) return 'text-warning';
-    if (quantity > 100) return 'text-info';
-    return 'text-success';
-}
-
-// Price formatting
-function formatPrice(price) {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
-    }).format(price);
-}
-
-// Export functions
-function exportCurrentView() {
-    const exportUrl = document.querySelector('a[href*="export"]').href;
-    window.open(exportUrl, '_blank');
-}
-
-function clearAllFilters() {
-    window.location.href = window.location.pathname;
-}
-
-// Real-time stock warnings
-function checkStockLevels() {
-    const stockCells = document.querySelectorAll('[data-stock-quantity]');
-
-    stockCells.forEach(cell => {
-        const quantity = parseInt(cell.dataset.stockQuantity);
-
-        if (quantity === 0) {
-            cell.classList.add('alert-danger');
-            cell.title = 'Out of stock!';
-        } else if (quantity < 10) {
-            cell.classList.add('alert-warning');
-            cell.title = 'Low stock warning';
-        }
-    });
-}
-
-// Initialize stock level checks
-document.addEventListener('DOMContentLoaded', checkStockLevels);
-
-// Search suggestions (for future enhancement)
-function showItemSuggestions(query) {
-    if (query.length < 2) return;
-
-    // This could fetch suggestions via AJAX
-    fetch(`/items/search-suggestions?q=${encodeURIComponent(query)}`)
-        .then(response => response.json())
-        .then(data => {
-            displaySearchSuggestions(data);
-        })
-        .catch(error => {
-            console.log('Search suggestions not available');
-        });
-}
-
-function displaySearchSuggestions(suggestions) {
-    const suggestionsContainer = document.getElementById('search_suggestions');
-    if (suggestionsContainer) {
-        suggestionsContainer.innerHTML = suggestions.map(suggestion =>
-            `<div class="suggestion-item" onclick="selectSuggestion('${suggestion}')">${suggestion}</div>`
-        ).join('');
-    }
-}
-
-function selectSuggestion(value) {
-    document.getElementById('search').value = value;
-    document.getElementById('searchForm').submit();
-}
-
-// Stock movement tracking (for future enhancement)
-function trackStockMovement(itemId, oldQuantity, newQuantity, action) {
-    // This could send analytics data
-    console.log(`Stock movement: Item ${itemId}, ${oldQuantity} → ${newQuantity} (${action})`);
-}
-
-// Inventory alerts
-function checkInventoryAlerts() {
-    const outOfStock = document.querySelectorAll('[data-stock-quantity="0"]').length;
-    const lowStock = document.querySelectorAll('[data-stock-quantity]').length;
-
-    if (outOfStock > 0) {
-        showNotification(`${outOfStock} items are out of stock`, 'danger');
-    }
-
-    if (lowStock > 0) {
-        showNotification(`${lowStock} items have low stock`, 'warning');
-    }
-}
-
-function showNotification(message, type = 'info') {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    notification.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-
-    document.body.appendChild(notification);
-
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.remove();
-        }
-    }, 5000);
-}
-
-// Barcode scanning (for future enhancement)
-function initBarcodeScanner() {
-    let barcode = '';
-    let scannerTimeout;
-
-    document.addEventListener('keydown', function(e) {
-        // If scanner is active and we get rapid keystrokes
-        if (e.key !== 'Enter' && e.key !== 'Shift' && e.key !== 'Control' && e.key !== 'Alt') {
-            barcode += e.key;
-
-            clearTimeout(scannerTimeout);
-            scannerTimeout = setTimeout(() => {
-                if (barcode.length > 5) { // Assume barcodes are longer than 5 chars
-                    searchByBarcode(barcode);
-                }
-                barcode = '';
-            }, 100);
-        }
-    });
-}
-
-function searchByBarcode(code) {
-    document.getElementById('search').value = code;
-    document.getElementById('searchForm').submit();
-}
-
-// Initialize barcode scanner
-document.addEventListener('DOMContentLoaded', initBarcodeScanner);
-
-// Price calculator utilities
-function calculatePriceMargin(cost, price) {
-    if (cost === 0) return 0;
-    return ((price - cost) / cost * 100).toFixed(2);
-}
-
-function calculateProfitMargin(cost, price) {
-    if (price === 0) return 0;
-    return ((price - cost) / price * 100).toFixed(2);
-}
-
-// Inventory value calculations
-function calculateInventoryValue() {
-    const items = document.querySelectorAll('[data-item-price][data-item-quantity]');
-    let totalValue = 0;
-
-    items.forEach(item => {
-        const price = parseFloat(item.dataset.itemPrice) || 0;
-        const quantity = parseInt(item.dataset.itemQuantity) || 0;
-        totalValue += price * quantity;
-    });
-
-    return totalValue;
-}
-
-// Stock level recommendations
-function getStockRecommendation(currentStock, averageSales, leadTime) {
-    const safetyStock = Math.ceil(averageSales * leadTime * 0.2); // 20% safety margin
-    const reorderPoint = (averageSales * leadTime) + safetyStock;
-
-    if (currentStock <= reorderPoint) {
-        return {
-            action: 'reorder',
-            message: `Consider reordering. Current: ${currentStock}, Recommended reorder point: ${reorderPoint}`,
-            urgency: currentStock === 0 ? 'critical' : 'warning'
-        };
-    }
-
-    return {
-        action: 'none',
-        message: 'Stock level is adequate',
-        urgency: 'normal'
-    };
-}
-
-// Enhanced stock modal with calculations
-function enhanceStockModal() {
-    const modal = document.getElementById('stockModal');
-    if (!modal) return;
-
-    // Add preview section to modal body
-    const modalBody = modal.querySelector('.modal-body');
-    const previewDiv = document.createElement('div');
-    previewDiv.id = 'stock_preview';
-    previewDiv.className = 'alert alert-info mt-3';
-    previewDiv.style.display = 'none';
-    modalBody.appendChild(previewDiv);
-
-    // Add event listeners for real-time preview
-    const actionSelect = modal.querySelector('#stock_action');
-    const quantityInput = modal.querySelector('#quantity');
-    const currentStockInput = modal.querySelector('#current_stock');
-
-    function updatePreview() {
-        const action = actionSelect.value;
-        const quantity = parseInt(quantityInput.value) || 0;
-        const currentStock = parseInt(currentStockInput.value) || 0;
-
-        if (quantity === 0) {
-            previewDiv.style.display = 'none';
-            return;
-        }
-
-        let newStock;
-        let actionText;
-
-        switch (action) {
-            case 'add':
-                newStock = currentStock + quantity;
-                actionText = `Adding ${quantity} units`;
-                break;
-            case 'remove':
-                newStock = Math.max(0, currentStock - quantity);
-                actionText = `Removing ${quantity} units`;
-                if (currentStock < quantity) {
-                    actionText += ` (limited to available stock)`;
-                }
-                break;
-            case 'set':
-                newStock = quantity;
-                actionText = `Setting stock to ${quantity} units`;
-                break;
-        }
-
-        previewDiv.innerHTML = `
-            <strong>${actionText}</strong><br>
-            Current Stock: ${currentStock} → New Stock: ${newStock}
-            ${newStock === 0 ? '<br><span class="text-danger">⚠️ This will result in zero stock</span>' : ''}
-            ${newStock < 10 && newStock > 0 ? '<br><span class="text-warning">⚠️ This will result in low stock</span>' : ''}
-        `;
-
-        previewDiv.className = `alert mt-3 ${newStock === 0 ? 'alert-danger' : (newStock < 10 ? 'alert-warning' : 'alert-success')}`;
-        previewDiv.style.display = 'block';
-    }
-
-    actionSelect.addEventListener('change', updatePreview);
-    quantityInput.addEventListener('input', updatePreview);
-}
-
-// Initialize enhanced stock modal
-document.addEventListener('DOMContentLoaded', enhanceStockModal);
-
-// Keyboard navigation for table
-function initTableNavigation() {
-    const table = document.querySelector('.table tbody');
-    if (!table) return;
-
-    let currentRow = 0;
-    const rows = table.querySelectorAll('tr');
-
-    document.addEventListener('keydown', function(e) {
-        // Only if no input is focused
-        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT') {
-            return;
-        }
-
-        switch (e.key) {
-            case 'ArrowDown':
-                e.preventDefault();
-                currentRow = Math.min(currentRow + 1, rows.length - 1);
-                highlightRow(rows[currentRow]);
-                break;
-            case 'ArrowUp':
-                e.preventDefault();
-                currentRow = Math.max(currentRow - 1, 0);
-                highlightRow(rows[currentRow]);
-                break;
-            case 'Enter':
-                e.preventDefault();
-                const editButton = rows[currentRow].querySelector('a[title="Edit Item"]');
-                if (editButton) editButton.click();
-                break;
-            case ' ':
-                e.preventDefault();
-                const stockButton = rows[currentRow].querySelector('button[title="Quick Stock Update"]');
-                if (stockButton) stockButton.click();
-                break;
-        }
-    });
-}
-
-function highlightRow(row) {
-    // Remove previous highlights
-    document.querySelectorAll('.table tbody tr').forEach(r => {
-        r.classList.remove('table-active');
-    });
-
-    // Add highlight to current row
-    row.classList.add('table-active');
-    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-// Initialize table navigation
-document.addEventListener('DOMContentLoaded', initTableNavigation);
-
-// Performance monitoring
-function trackFilterPerformance() {
-    const startTime = performance.now();
-
-    window.addEventListener('load', function() {
-        const endTime = performance.now();
-        const filterTime = endTime - startTime;
-
-        console.log(`Filter operation completed in ${filterTime.toFixed(2)}ms`);
-
-        // Show performance warning if slow
-        if (filterTime > 2000) {
-            showNotification('Filter operation took longer than expected. Consider reducing filter criteria.', 'warning');
-        }
-    });
-}
-
-// Initialize performance tracking
-document.addEventListener('DOMContentLoaded', trackFilterPerformance);
 </script>
 
 @endsection

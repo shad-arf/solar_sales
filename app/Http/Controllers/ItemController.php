@@ -316,8 +316,8 @@ class ItemController extends Controller
 
     public function show(Item $item)
     {
-        // Load sales data for this item
-        $item->load(['sales.sale.customer']);
+        // Load order items with their sales and customers
+        $item->load(['orderItems.sale.customer']);
 
         // Calculate sales statistics
         $salesStats = [

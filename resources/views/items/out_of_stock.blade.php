@@ -11,7 +11,7 @@
         <tr>
             <th>Code</th>
             <th>Name</th>
-            <th class="text-end">Price ($)</th>
+            <th class="text-end">End user ($)</th>
             <th class="text-end">Qty</th>
         </tr>
     </thead>

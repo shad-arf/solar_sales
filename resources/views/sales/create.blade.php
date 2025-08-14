@@ -7,22 +7,35 @@
     @csrf
 
     {{-- 1) Customer --}}
-    <div class="mb-3">
-        <label class="form-label">Customer</label>
-        <select name="customer_id"
-                class="form-select @error('customer_id') is-invalid @enderror"
-                required>
-            <option value="" disabled {{ old('customer_id') ? '' : 'selected' }}>
-                Select customer…
-            </option>
-            @foreach($customers as $cust)
-                <option value="{{ $cust->id }}"
-                        {{ old('customer_id') == $cust->id ? 'selected' : '' }}>
-                    {{ $cust->name }}
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <label class="form-label">Customer</label>
+            <select name="customer_id" id="customer-select"
+                    class="form-select @error('customer_id') is-invalid @enderror"
+                    required>
+                <option value="" disabled {{ old('customer_id') ? '' : 'selected' }}>
+                    Select customer…
                 </option>
-            @endforeach
-        </select>
-        @error('customer_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                @foreach($customers as $cust)
+                    <option value="{{ $cust->id }}"
+                            {{ old('customer_id') == $cust->id ? 'selected' : '' }}>
+                        {{ $cust->name }}
+                    </option>
+                @endforeach
+            </select>
+            @error('customer_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Customer Type for This Sale</label>
+            <select name="customer_type" id="customer-type-select"
+                    class="form-select @error('customer_type') is-invalid @enderror"
+                    required>
+                <option value="end_user" {{ old('customer_type', 'end_user') == 'end_user' ? 'selected' : '' }}>End User</option>
+                <option value="installer" {{ old('customer_type') == 'installer' ? 'selected' : '' }}>Installer</option>
+                <option value="reseller" {{ old('customer_type') == 'reseller' ? 'selected' : '' }}>Reseller</option>
+            </select>
+            @error('customer_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        </div>
     </div>
 
     {{-- 2) Invoice Code --}}
@@ -43,9 +56,9 @@
             <thead class="table-light">
                 <tr>
                     <th>Item</th>
-                    <th class="text-end">Reg. ($)</th>
-                    <th class="text-end">Op. ($)</th>
-                    <th class="text-end">Base ($)</th>
+                    <th class="text-end">End user ($)</th>
+                    <th class="text-end">Installer ($)</th>
+                    <th class="text-end">Reseller ($)</th>
                     <th>Type</th>
                     <th class="text-center">Qty</th>
                     <th class="text-center">Discount (%)</th>
@@ -76,9 +89,9 @@
                             <td><input type="text" class="form-control line-price-base" readonly></td>
                             <td>
                                 <select name="price_type[]" class="form-select price-type" onchange="updateRow(this)">
-                                    <option value="regular"  {{ old("price_type.$key")=='regular'  ? 'selected':'' }}>Regular</option>
-                                    <option value="operator" {{ old("price_type.$key")=='operator'? 'selected':'' }}>Operator</option>
-                                    <option value="base"     {{ old("price_type.$key")=='base'    ? 'selected':'' }}>Base</option>
+                                    <option value="regular"  {{ old("price_type.$key")=='regular'  ? 'selected':'' }}>End user</option>
+                                    <option value="operator" {{ old("price_type.$key")=='operator'? 'selected':'' }}>Installer</option>
+                                    <option value="base"     {{ old("price_type.$key")=='base'    ? 'selected':'' }}>Reseller</option>
                                 </select>
                             </td>
                             <td>
@@ -114,11 +127,24 @@
 
     {{-- 4) Totals & Payment --}}
     <div class="row gy-3">
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <label>Items Total</label>
+            <input type="text" id="items_total" class="form-control" value="0.00" readonly>
+        </div>
+        <div class="col-md-3">
+            <label>Overall Discount ($)</label>
+            <input type="number" name="discount" id="discount" 
+                   class="form-control" 
+                   value="{{ old('discount', '0.00') }}" 
+                   step="0.01" min="0" 
+                   oninput="recalcTotals()"
+                   placeholder="0.00">
+        </div>
+        <div class="col-md-3">
             <label>Subtotal</label>
             <input type="text" name="subtotal" id="subtotal" class="form-control" value="0.00" readonly>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label>Amount Paid</label>
             <input type="number" name="paid_amount" id="paid_amount"
                    class="form-control"
@@ -127,6 +153,8 @@
                    oninput="recalcOutstanding()"
                    required>
         </div>
+    </div>
+    <div class="row gy-3 mt-2">
         <div class="col-md-4">
             <label>Outstanding</label>
             <input type="text" id="outstanding" class="form-control" value="0.00" readonly>
@@ -169,9 +197,9 @@
       <td><input type="text" class="form-control line-price-base" readonly></td>
       <td>
         <select name="price_type[]" class="form-select price-type" onchange="updateRow(this)">
-          <option value="regular" selected>Regular</option>
-          <option value="operator">Operator</option>
-          <option value="base">Base</option>
+          <option value="regular" selected>End user</option>
+          <option value="operator">Installer</option>
+          <option value="base">Reseller</option>
         </select>
       </td>
       <td>
@@ -204,6 +232,22 @@
     row.classList.add('item-row');
     row.style.display = '';
     document.getElementById('items-body').appendChild(row);
+    
+    // Set price type based on selected customer type
+    const customerTypeSelect = document.getElementById('customer-type-select');
+    if (customerTypeSelect) {
+      const customerType = customerTypeSelect.value;
+      const priceTypeSelect = row.querySelector('.price-type');
+      
+      if (customerType === 'installer') {
+        priceTypeSelect.value = 'operator';
+      } else if (customerType === 'reseller') {
+        priceTypeSelect.value = 'base';
+      } else {
+        priceTypeSelect.value = 'regular';
+      }
+    }
+    
     updateRow(row.querySelector('.item-select'));
   }
 
@@ -243,16 +287,27 @@
   }
 
   function recalcAll() {
-    let sum = 0;
-    document.querySelectorAll('.line-total').forEach(i => sum+=+i.value||0);
-    document.getElementById('subtotal').value = sum.toFixed(2);
+    recalcTotals();
+  }
+
+  function recalcTotals() {
+    // Calculate items total
+    let itemsTotal = 0;
+    document.querySelectorAll('.line-total').forEach(i => itemsTotal += +i.value || 0);
+    document.getElementById('items_total').value = itemsTotal.toFixed(2);
+    
+    // Apply overall discount
+    const discount = +document.getElementById('discount').value || 0;
+    const subtotal = Math.max(0, itemsTotal - discount);
+    document.getElementById('subtotal').value = subtotal.toFixed(2);
+    
     recalcOutstanding();
   }
 
   function recalcOutstanding() {
-    const sub = +document.getElementById('subtotal').value||0;
-    const paid= +document.getElementById('paid_amount').value||0;
-    document.getElementById('outstanding').value = (sub-paid).toFixed(2);
+    const sub = +document.getElementById('subtotal').value || 0;
+    const paid = +document.getElementById('paid_amount').value || 0;
+    document.getElementById('outstanding').value = (sub - paid).toFixed(2);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -262,5 +317,26 @@
       document.querySelectorAll('.item-select').forEach(el=>updateRow(el));
     }
   });
+
+  // Auto-suggest price type based on customer type
+  const customerTypeSelect = document.getElementById('customer-type-select');
+  if (customerTypeSelect) {
+    customerTypeSelect.addEventListener('change', function() {
+      const customerType = this.value;
+      let suggestedPriceType = 'regular'; // default to End user
+      
+      if (customerType === 'installer') {
+        suggestedPriceType = 'operator';
+      } else if (customerType === 'reseller') {
+        suggestedPriceType = 'base';
+      }
+      
+      // Update all existing price type dropdowns
+      document.querySelectorAll('.price-type').forEach(priceSelect => {
+        priceSelect.value = suggestedPriceType;
+        updateRow(priceSelect);
+      });
+    });
+  }
 </script>
 @endsection

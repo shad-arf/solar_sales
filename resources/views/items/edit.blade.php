@@ -22,17 +22,17 @@
         </div>
 
         <div class="col-md-6 mb-3">
-            <label class="form-label">Price ($)</label>
+            <label class="form-label">End user ($)</label>
             <input type="number" name="price" value="{{ old('price', $item->price) }}" step="0.01" min="0" class="form-control">
         </div>
 
         <div class="col-md-6 mb-3">
-            <label class="form-label">Base Price ($)</label>
+            <label class="form-label">Reseller ($)</label>
             <input type="number" name="base_price" value="{{ old('base_price', $item->base_price) }}" step="0.01" min="0" class="form-control">
         </div>
 
         <div class="col-md-6 mb-3">
-            <label class="form-label">Operator Price ($)</label>
+            <label class="form-label">Installer ($)</label>
             <input type="number" name="operator_price" value="{{ old('operator_price', $item->operator_price) }}" step="0.01" min="0" class="form-control">
         </div>
     </div>

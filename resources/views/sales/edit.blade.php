@@ -2,21 +2,36 @@
 
 @section('content')
 <h2>Edit Sale</h2>
-
 <form action="{{ route('sales.update', $sale) }}" method="POST" class="mt-3" id="sale-form">
     @csrf
     @method('PUT')
 
     {{-- 1) Customer --}}
-    <div class="mb-3">
-        <label class="form-label">Customer</label>
-        <select name="customer_id" id="customer-select" class="form-select @error('customer_id') is-invalid @enderror" required>
-            <option value="" disabled {{ old('customer_id', $sale->customer_id) ? '' : 'selected' }}>Select customer…</option>
-            @foreach($customers as $cust)
-                <option value="{{ $cust->id }}" {{ old('customer_id', $sale->customer_id) == $cust->id ? 'selected' : '' }}>{{ $cust->name }}</option>
-            @endforeach
-        </select>
-        @error('customer_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <label class="form-label">Customer</label>
+            <select name="customer_id" id="customer-select" class="form-select @error('customer_id') is-invalid @enderror" required>
+                <option value="" disabled {{ old('customer_id', $sale->customer_id) ? '' : 'selected' }}>Select customer…</option>
+                @foreach($customers as $cust)
+                    <option value="{{ $cust->id }}" 
+                            {{ old('customer_id', default: $sale->customer_id) == $cust->id ? 'selected' : '' }}>
+                        {{ $cust->name }}
+                    </option>
+                @endforeach
+            </select>
+            @error('customer_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Customer Type for This Sale</label>
+            <select name="customer_type" id="customer-type-select"
+                    class="form-select @error('customer_type') is-invalid @enderror"
+                    required>
+                <option value="end_user" {{ old('customer_type', $sale->customer_type ?? 'end_user') == 'end_user' ? 'selected' : '' }}>End User</option>
+                <option value="installer" {{ old('customer_type', $sale->customer_type) == 'installer' ? 'selected' : '' }}>Installer</option>
+                <option value="reseller" {{ old('customer_type', $sale->customer_type) == 'reseller' ? 'selected' : '' }}>Reseller</option>
+            </select>
+            @error('customer_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        </div>
     </div>
 
     {{-- 2) Invoice Code --}}
@@ -33,9 +48,9 @@
             <thead class="table-light">
                 <tr>
                     <th>Item</th>
-                    <th class="text-end">Reg. ($)</th>
-                    <th class="text-end">Op. ($)</th>
-                    <th class="text-end">Base ($)</th>
+                    <th class="text-end">End user ($)</th>
+                    <th class="text-end">Installer ($)</th>
+                    <th class="text-end">Reseller ($)</th>
                     <th>Type</th>
                     <th class="text-center">Qty</th>
                     <th class="text-center">Discount (%)</th>
@@ -62,9 +77,9 @@
                             <td><input type="text" class="form-control line-price-base" readonly></td>
                             <td>
                                 <select name="price_type[]" class="form-select price-type" onchange="updateRow(this)">
-                                    <option value="regular" {{ old("price_type.$i")=='regular' ? 'selected':'' }}>Regular</option>
-                                    <option value="operator" {{ old("price_type.$i")=='operator' ? 'selected':'' }}>Operator</option>
-                                    <option value="base" {{ old("price_type.$i")=='base' ? 'selected':'' }}>Base</option>
+                                    <option value="regular" {{ old("price_type.$i")=='regular' ? 'selected':'' }}>End user</option>
+                                    <option value="operator" {{ old("price_type.$i")=='operator' ? 'selected':'' }}>Installer</option>
+                                    <option value="base" {{ old("price_type.$i")=='base' ? 'selected':'' }}>Reseller</option>
                                 </select>
                             </td>
                             <td><input type="number" name="quantity[]" class="form-control line-quantity" min="1" value="{{ old("quantity.$i",1) }}" required onchange="updateRow(this)" oninput="updateRow(this)"></td>
@@ -76,7 +91,12 @@
                 @else
                     @foreach($sale->orderItems as $i => $oi)
                         @php
-                            $type = $oi->unit_price == $oi->item->operator_price ? 'operator' : ($oi->unit_price == $oi->item->base_price ? 'base' : 'regular');
+                            $type = 'regular';
+                            if ($oi->item->operator_price && abs($oi->unit_price - $oi->item->operator_price) < 0.01) {
+                                $type = 'operator';
+                            } elseif ($oi->item->base_price && abs($oi->unit_price - $oi->item->base_price) < 0.01) {
+                                $type = 'base';
+                            }
                         @endphp
                         <tr class="item-row">
                             <input type="hidden" name="order_item_id[]" value="{{ $oi->id }}">
@@ -93,13 +113,13 @@
                             <td><input type="text" class="form-control line-price-base" readonly></td>
                             <td>
                                 <select name="price_type[]" class="form-select price-type" onchange="updateRow(this)">
-                                    <option value="regular" {{ $type=='regular'? 'selected':'' }}>Regular</option>
-                                    <option value="operator" {{ $type=='operator'? 'selected':'' }}>Operator</option>
-                                    <option value="base" {{ $type=='base'? 'selected':'' }}>Base</option>
+                                    <option value="regular" {{ $type=='regular'? 'selected':'' }}>End user</option>
+                                    <option value="operator" {{ $type=='operator'? 'selected':'' }}>Installer</option>
+                                    <option value="base" {{ $type=='base'? 'selected':'' }}>Reseller</option>
                                 </select>
                             </td>
                             <td><input type="number" name="quantity[]" class="form-control line-quantity" min="1" value="{{ old("quantity.$i", $oi->quantity) }}" required onchange="updateRow(this)" oninput="updateRow(this)"></td>
-                            <td><input type="number" name="line_discount[]" class="form-control line-discount" step="0.01" min="0" max="100" value="{{ old("line_discount.$i", $oi->discount) }}" oninput="updateRow(this)"></td>
+                            <td><input type="number" name="line_discount[]" class="form-control line-discount" step="0.01" min="0" max="100" value="{{ old("line_discount.$i", $oi->line_discount) }}" oninput="updateRow(this)"></td>
                             <td><input type="text" name="line_total[]" class="form-control line-total" readonly></td>
                             <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)"><i class="bi bi-trash"></i></button></td>
                         </tr>
@@ -114,16 +134,32 @@
     @php
         $initialSubtotal = $sale->orderItems->sum(fn($oi) => $oi->line_total);
         $existingPaid    = $sale->paid_amount;
+        $itemsTotal      = $initialSubtotal + ($sale->discount ?? 0);
     @endphp
     <div class="row gy-3">
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <label class="form-label">Items Total</label>
+            <input type="text" id="items_total" class="form-control" value="{{ number_format($itemsTotal, 2) }}" readonly>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Overall Discount ($)</label>
+            <input type="number" name="discount" id="discount" 
+                   class="form-control" 
+                   value="{{ old('discount', $sale->discount ?? 0) }}" 
+                   step="0.01" min="0" 
+                   oninput="recalcTotals()"
+                   placeholder="0.00">
+        </div>
+        <div class="col-md-3">
             <label class="form-label">Subtotal</label>
             <input type="text" id="subtotal" class="form-control" value="{{ number_format($initialSubtotal,2) }}" readonly>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label class="form-label">Already Paid</label>
             <input type="text" class="form-control" value="{{ number_format($existingPaid,2) }}" readonly>
         </div>
+    </div>
+    <div class="row gy-3 mt-2">
         <div class="col-md-4">
             <label class="form-label">New Payment</label>
             <input type="number" name="paid" id="paid_amount" class="form-control" value="{{ old('paid',0) }}" step="0.01"  oninput="recalcAll()">
@@ -166,9 +202,9 @@
       <td><input type="text" class="form-control line-price-base" readonly></td>
       <td>
         <select name="price_type[]" class="form-select price-type" onchange="updateRow(this)">
-          <option value="regular" selected>Regular</option>
-          <option value="operator">Operator</option>
-          <option value="base">Base</option>
+          <option value="regular" selected>End user</option>
+          <option value="operator">Installer</option>
+          <option value="base">Reseller</option>
         </select>
       </td>
       <td><input type="number" name="quantity[]" class="form-control line-quantity" value="1" min="1" required onchange="updateRow(this)" oninput="updateRow(this)"></td>
@@ -232,14 +268,24 @@
   }
 
   function recalcAll() {
-    let sum = 0;
-    document.querySelectorAll('.line-total').forEach(input => sum += parseFloat(input.value) || 0);
-    document.getElementById('subtotal').value = sum.toFixed(2);
+    recalcTotals();
+  }
+
+  function recalcTotals() {
+    // Calculate items total
+    let itemsTotal = 0;
+    document.querySelectorAll('.line-total').forEach(input => itemsTotal += parseFloat(input.value) || 0);
+    document.getElementById('items_total').value = itemsTotal.toFixed(2);
+    
+    // Apply overall discount
+    const discount = parseFloat(document.getElementById('discount').value) || 0;
+    const subtotal = Math.max(0, itemsTotal - discount);
+    document.getElementById('subtotal').value = subtotal.toFixed(2);
 
     const existing = parseFloat("{{ $existingPaid }}") || 0;
     const paid = parseFloat(document.getElementById('paid_amount').value) || 0;
 
-    const before = sum - existing;
+    const before = subtotal - existing;
     const after = Math.max(0, before - paid);
     document.getElementById('outstanding_after').value = after.toFixed(2);
   }
@@ -253,8 +299,47 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('tr.item-row').forEach(row => attachHandlers(row));
-    document.querySelectorAll('tr.item-row').forEach(row => updateRow(row.querySelector('.item-select')));
+    document.querySelectorAll('tr.item-row').forEach(row => {
+      attachHandlers(row);
+      // Only update prices without changing the selected price type
+      const itemSelect = row.querySelector('.item-select');
+      const opt = itemSelect.selectedOptions[0] || {};
+      const reg   = parseFloat(opt.dataset.price)     || 0;
+      const op    = parseFloat(opt.dataset.opPrice)   || 0;
+      const baseP = parseFloat(opt.dataset.basePrice) || 0;
+
+      // Populate price fields only
+      row.querySelector('.line-price-reg').value  = reg.toFixed(2);
+      row.querySelector('.line-price-op').value   = op.toFixed(2);
+      row.querySelector('.line-price-base').value = baseP.toFixed(2);
+
+      // Calculate line total based on existing selections
+      const qty = +row.querySelector('.line-quantity').value || 0;
+      const disc = parseFloat(row.querySelector('.line-discount').value) || 0;
+      const lineTotal = reg * qty * (1 - disc / 100);
+      row.querySelector('.line-total').value = lineTotal.toFixed(2);
+    });
   });
+
+  // Auto-suggest price type based on customer type
+  const customerTypeSelect = document.getElementById('customer-type-select');
+  if (customerTypeSelect) {
+    customerTypeSelect.addEventListener('change', function() {
+      const customerType = this.value;
+      let suggestedPriceType = 'regular'; // default to End user
+      
+      if (customerType === 'installer') {
+        suggestedPriceType = 'operator';
+      } else if (customerType === 'reseller') {
+        suggestedPriceType = 'base';
+      }
+      
+      // Update all price type dropdowns in new item rows only (not existing ones)
+      document.querySelectorAll('tr:not(.item-row) .price-type').forEach(priceSelect => {
+        priceSelect.value = suggestedPriceType;
+        updateRow(priceSelect);
+      });
+    });
+  }
 </script>
 @endsection

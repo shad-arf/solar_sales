@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Order extends Model
 {
     use SoftDeletes;
-    protected $fillable = ['sale_id', 'item_id', 'quantity', 'discount', 'line_total','unit_price', 'line_discount', 'status', 'note'];
+    protected $fillable = ['sale_id', 'item_id', 'quantity', 'discount', 'line_total','unit_price', 'price_type', 'line_discount', 'status', 'note'];
 
 
     public function sale()

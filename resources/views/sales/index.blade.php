@@ -245,12 +245,30 @@
                     @endif
                 </a>
             </th>
+            <th>
+                <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'customer_type', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}"
+                   class="text-decoration-none text-dark">
+                    Type
+                    @if(request('sort_by') == 'customer_type')
+                        <i class="bi bi-chevron-{{ request('sort_direction', 'desc') == 'desc' ? 'down' : 'up' }}"></i>
+                    @endif
+                </a>
+            </th>
             <th>Items</th>
             <th class="text-end">
                 <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'total', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}"
                    class="text-decoration-none text-dark">
                     Total ($)
                     @if(request('sort_by') == 'total')
+                        <i class="bi bi-chevron-{{ request('sort_direction', 'desc') == 'desc' ? 'down' : 'up' }}"></i>
+                    @endif
+                </a>
+            </th>
+            <th class="text-end">
+                <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'discount', 'sort_direction' => request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}"
+                   class="text-decoration-none text-dark">
+                    Discount ($)
+                    @if(request('sort_by') == 'discount')
                         <i class="bi bi-chevron-{{ request('sort_direction', 'desc') == 'desc' ? 'down' : 'up' }}"></i>
                     @endif
                 </a>
@@ -278,8 +296,24 @@
                     @endif
                 </td>
                 <td>{{ $sale->customer->name ?? '— Deleted Customer —' }}</td>
+                <td>
+                    @php
+                        $customerTypeLabel = match($sale->customer_type ?? 'end_user') {
+                            'installer' => 'Installer',
+                            'reseller' => 'Reseller',
+                            default => 'End User'
+                        };
+                        $badgeClass = match($sale->customer_type ?? 'end_user') {
+                            'installer' => 'bg-warning',
+                            'reseller' => 'bg-info',
+                            default => 'bg-success'
+                        };
+                    @endphp
+                    <span class="badge {{ $badgeClass }}">{{ $customerTypeLabel }}</span>
+                </td>
                 <td style="min-width: 200px;">{{ $itemsDisplay ?: '—' }}</td>
                 <td class="text-end">${{ number_format($totalAmount, 2) }}</td>
+                <td class="text-end">${{ number_format($sale->discount ?? 0, 2) }}</td>
                 <td class="text-end">${{ number_format($paidAmount, 2) }}</td>
                 <td class="text-end
                     @if($outstandingAmt > 0) text-danger fw-bold
@@ -347,7 +381,7 @@
             </tr>
         @empty
             <tr>
-                <td colspan="8" class="text-center text-muted py-4">
+                <td colspan="10" class="text-center text-muted py-4">
                     @if(request()->hasAny(['search', 'customer_id', 'date_from', 'date_to', 'payment_status']))
                         No sales found matching your criteria.
                     @else
