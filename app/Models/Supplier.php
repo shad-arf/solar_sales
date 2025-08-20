@@ -17,9 +17,14 @@ class Supplier extends Model
         'email',
         'phone',
         'address',
+        'city',
+        'state',
+        'postal_code',
+        'country',
         'tax_id',
         'notes',
-        'is_active'
+        'is_active',
+        'status'
     ];
 
     protected $casts = [
@@ -39,7 +44,7 @@ class Supplier extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where('status', 'active');
     }
 
     /**

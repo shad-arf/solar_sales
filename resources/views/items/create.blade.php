@@ -4,9 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Add New Item</h2>
     <div>
-        <a href="{{ route('items.pricing') }}" class="btn btn-info me-2">
-            <i class="bi bi-currency-dollar"></i> Manage Pricing
-        </a>
+    
         <a href="{{ route('items.index') }}" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Back to Items
         </a>
@@ -59,7 +57,7 @@
                         <i class="bi bi-currency-dollar"></i> Pricing Information
                     </h6>
                 </div>
-                
+
                 <div class="col-12">
                     <div id="pricingTypes">
                         <!-- Default Pricing Row -->
@@ -161,7 +159,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="mt-3">
                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="addPricingRow()">
                             <i class="bi bi-plus-circle"></i> Add Another Pricing Option
@@ -222,7 +220,7 @@
 let pricingRowIndex = 3;
 
 document.addEventListener('DOMContentLoaded', function() {
-    
+
     // Add event listeners to all pricing amount inputs and radio buttons
     function addPricingEventListeners() {
         document.querySelectorAll('.pricing-amount, .default-price-radio').forEach(input => {
@@ -337,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     input.name = `pricing[${index}][price]`;
                 }
             });
-            
+
             // Update radio button values
             const radio = row.querySelector('.default-price-radio');
             if (radio) {

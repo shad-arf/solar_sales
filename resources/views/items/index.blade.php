@@ -7,9 +7,6 @@
         <a href="{{ route('items.create') }}" class="btn btn-success me-2">
             <i class="bi bi-plus-circle"></i> Add Item
         </a>
-        <a href="{{ route('items.pricing') }}" class="btn btn-info me-2">
-            <i class="bi bi-currency-dollar"></i> Pricing Management
-        </a>
         <a href="{{ route('items.lowStock') }}" class="btn btn-warning me-2">
             <i class="bi bi-exclamation-triangle"></i> Low Stock
         </a>
@@ -465,7 +462,7 @@
                                     'Per kg' => ['class' => 'text-secondary', 'icon' => 'bi-speedometer'],
                                 ];
                             @endphp
-                            
+
                             @if($activePrices->count() > 0)
                                 <div class="mb-1">
                                     @foreach($activePrices->take(3) as $priceItem)
@@ -483,13 +480,13 @@
                                         </div>
                                     @endforeach
                                 </div>
-                                
+
                                 @if($activePrices->count() > 3)
                                     <div class="small text-muted text-center">
                                         <i class="bi bi-plus-circle me-1"></i>{{ $activePrices->count() - 3 }} more prices
                                     </div>
                                 @endif
-                                
+
                                 @if($activePrices->count() > 1)
                                     <div class="border-top pt-1 mt-1">
                                         <div class="d-flex justify-content-between align-items-center">
@@ -516,7 +513,7 @@
                                         $legacyPrices[] = ['value' => $item->operator_price, 'label' => 'Operator', 'class' => 'text-warning', 'icon' => 'bi-tools'];
                                     }
                                 @endphp
-                                
+
                                 @if(count($legacyPrices) > 0)
                                     <div class="mb-1">
                                         @foreach($legacyPrices as $price)
@@ -595,17 +592,6 @@
                                    title="Edit Item">
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
-                                <a href="{{ route('items.pricing') }}?item={{ $item->id }}"
-                                   class="btn btn-sm btn-outline-success"
-                                   title="Manage Pricing">
-                                    <i class="bi bi-currency-dollar"></i>
-                                </a>
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-warning"
-                                        title="Quick Stock Update"
-                                        onclick="showStockModal({{ $item->id }}, @json($item->name), {{ $item->quantity }})">
-                                    <i class="bi bi-boxes"></i>
-                                </button>
                                 <form action="{{ route('items.destroy', $item) }}" method="POST" class="d-inline"
                                       onsubmit="return confirm('Delete ' + @json($item->name) + '? This can be restored later.');">
                                     @csrf
@@ -645,150 +631,7 @@
     </div>
 </div>
 
-<!-- Quick Stock Update Modal -->
-<div class="modal fade" id="stockModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Update Stock</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="stockForm" method="POST">
-                @csrf
-                @method('PATCH')
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Item</label>
-                        <input type="text" class="form-control" id="stockItemName" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <label for="current_stock" class="form-label">Current Stock</label>
-                        <input type="number" class="form-control" id="current_stock" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <label for="stock_action" class="form-label">Action</label>
-                        <select class="form-select" id="stock_action" name="action">
-                            <option value="add">Add Stock</option>
-                            <option value="remove">Remove Stock</option>
-                            <option value="set">Set Stock</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="quantity" class="form-label">Quantity</label>
-                        <input type="number" class="form-control" id="quantity" name="quantity" min="0" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="note" class="form-label">Note (Optional)</label>
-                        <input type="text" class="form-control" id="note" name="note" placeholder="Reason for stock change">
-                    </div>
-                    <div id="stock_preview" class="alert" style="display: none;"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update Stock</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
-<!-- Quick Pricing Modal -->
-<div class="modal fade" id="pricingModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Quick Price Update</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="pricingForm" method="POST">
-                @csrf
-                @method('PATCH')
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Item</label>
-                        <input type="text" class="form-control" id="pricingItemName" readonly>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="quick_regular_price" class="form-label">
-                                <i class="bi bi-currency-dollar text-primary me-1"></i>Regular Price
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" class="form-control" id="quick_regular_price" name="price" step="0.01" min="0">
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="quick_base_price" class="form-label">
-                                <i class="bi bi-box text-info me-1"></i>Wholesale Price
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" class="form-control" id="quick_base_price" name="base_price" step="0.01" min="0">
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="quick_operator_price" class="form-label">
-                                <i class="bi bi-tools text-warning me-1"></i>Operator Price
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" class="form-control" id="quick_operator_price" name="operator_price" step="0.01" min="0">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="card bg-light">
-                                <div class="card-body p-3">
-                                    <h6 class="card-title mb-2">
-                                        <i class="bi bi-calculator me-1"></i>Pricing Calculator
-                                    </h6>
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <label class="form-label small">Cost Price</label>
-                                            <div class="input-group input-group-sm">
-                                                <span class="input-group-text">$</span>
-                                                <input type="number" class="form-control" id="calc_cost" step="0.01" placeholder="0.00">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label small">Markup %</label>
-                                            <input type="number" class="form-control form-control-sm" id="calc_markup" value="25" min="0">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label small">Suggested Price</label>
-                                            <div class="input-group input-group-sm">
-                                                <span class="input-group-text">$</span>
-                                                <input type="text" class="form-control" id="calc_result" readonly>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-2">
-                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="applyCalculatedPrice()">
-                                            Apply to Regular Price
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">Update Prices</button>
-                    <a href="" id="fullPricingLink" class="btn btn-info">
-                        <i class="bi bi-currency-dollar"></i> Advanced Pricing
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 <script>
 // Main functionality
@@ -814,99 +657,10 @@ function filterByStock(status) {
     document.getElementById('searchForm').submit();
 }
 
-function showStockModal(itemId, itemName, currentStock) {
-    document.getElementById('stockItemName').value = itemName;
-    document.getElementById('current_stock').value = currentStock;
-    document.getElementById('stockForm').action = `/items/${itemId}/update-stock`;
-    document.getElementById('quantity').value = '';
-    document.getElementById('note').value = '';
-    document.getElementById('stock_action').value = 'add';
-    
-    // Hide preview
-    const preview = document.getElementById('stock_preview');
-    preview.style.display = 'none';
 
-    const modal = new bootstrap.Modal(document.getElementById('stockModal'));
-    modal.show();
-}
 
-function showPricingModal(itemId, itemName, regularPrice, basePrice, operatorPrice) {
-    document.getElementById('pricingItemName').value = itemName;
-    document.getElementById('quick_regular_price').value = regularPrice > 0 ? regularPrice : '';
-    document.getElementById('quick_base_price').value = basePrice > 0 ? basePrice : '';
-    document.getElementById('quick_operator_price').value = operatorPrice > 0 ? operatorPrice : '';
-    
-    // Set up form action
-    document.getElementById('pricingForm').action = `/items/${itemId}`;
-    
-    // Set up advanced pricing link
-    document.getElementById('fullPricingLink').href = `/items/pricing?item=${itemId}`;
-    
-    // Clear calculator
-    document.getElementById('calc_cost').value = '';
-    document.getElementById('calc_markup').value = '25';
-    document.getElementById('calc_result').value = '';
 
-    const modal = new bootstrap.Modal(document.getElementById('pricingModal'));
-    modal.show();
-}
 
-function calculateQuickPrice() {
-    const cost = parseFloat(document.getElementById('calc_cost').value) || 0;
-    const markup = parseFloat(document.getElementById('calc_markup').value) || 0;
-    const result = cost * (1 + markup / 100);
-    document.getElementById('calc_result').value = result > 0 ? result.toFixed(2) : '';
-}
-
-function applyCalculatedPrice() {
-    const result = document.getElementById('calc_result').value;
-    if (result) {
-        document.getElementById('quick_regular_price').value = result;
-    }
-}
-
-function updateStockPreview() {
-    const action = document.getElementById('stock_action').value;
-    const quantity = parseInt(document.getElementById('quantity').value) || 0;
-    const currentStock = parseInt(document.getElementById('current_stock').value) || 0;
-    const preview = document.getElementById('stock_preview');
-
-    if (quantity === 0) {
-        preview.style.display = 'none';
-        return;
-    }
-
-    let newStock;
-    let actionText;
-
-    switch (action) {
-        case 'add':
-            newStock = currentStock + quantity;
-            actionText = `Adding ${quantity} units`;
-            break;
-        case 'remove':
-            newStock = Math.max(0, currentStock - quantity);
-            actionText = `Removing ${quantity} units`;
-            if (currentStock < quantity) {
-                actionText += ` (limited to available stock)`;
-            }
-            break;
-        case 'set':
-            newStock = quantity;
-            actionText = `Setting stock to ${quantity} units`;
-            break;
-    }
-
-    preview.innerHTML = `
-        <strong>${actionText}</strong><br>
-        Current Stock: ${currentStock} → New Stock: ${newStock}
-        ${newStock === 0 ? '<br><span class="text-danger">⚠️ This will result in zero stock</span>' : ''}
-        ${newStock < 10 && newStock > 0 ? '<br><span class="text-warning">⚠️ This will result in low stock</span>' : ''}
-    `;
-
-    preview.className = `alert ${newStock === 0 ? 'alert-danger' : (newStock < 10 ? 'alert-warning' : 'alert-success')}`;
-    preview.style.display = 'block';
-}
 
 // Auto-submit functionality and event listeners
 document.addEventListener('DOMContentLoaded', function() {
@@ -1003,23 +757,6 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleAdvanced();
     }
 
-    // Stock modal preview functionality
-    const stockActionSelect = document.getElementById('stock_action');
-    const quantityInput = document.getElementById('quantity');
-
-    if (stockActionSelect && quantityInput) {
-        stockActionSelect.addEventListener('change', updateStockPreview);
-        quantityInput.addEventListener('input', updateStockPreview);
-    }
-    
-    // Pricing modal calculator functionality
-    const calcCost = document.getElementById('calc_cost');
-    const calcMarkup = document.getElementById('calc_markup');
-    
-    if (calcCost && calcMarkup) {
-        calcCost.addEventListener('input', calculateQuickPrice);
-        calcMarkup.addEventListener('input', calculateQuickPrice);
-    }
 
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {

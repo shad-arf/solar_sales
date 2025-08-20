@@ -89,9 +89,7 @@
                 <h5 class="mb-0">
                     <i class="bi bi-currency-dollar"></i> Pricing Information
                 </h5>
-                <a href="{{ route('items.pricing') }}?item={{ $item->id }}" class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-pencil-square"></i> Manage Pricing
-                </a>
+           
             </div>
             <div class="card-body">
                 @if($item->itemPrices->count() > 0)
@@ -288,12 +286,8 @@
                     <a href="{{ route('items.edit', $item) }}" class="btn btn-outline-primary">
                         <i class="bi bi-pencil-square"></i> Edit Item Details
                     </a>
-                    <a href="{{ route('items.pricing') }}?item={{ $item->id }}" class="btn btn-outline-success">
-                        <i class="bi bi-currency-dollar"></i> Manage Pricing
-                    </a>
-                    <button type="button" class="btn btn-outline-warning" onclick="showStockModal({{ $item->id }}, @json($item->name), {{ $item->quantity }})">
-                        <i class="bi bi-boxes"></i> Update Stock
-                    </button>
+
+
                     <a href="{{ route('sales.create') }}?item={{ $item->id }}" class="btn btn-outline-info">
                         <i class="bi bi-plus-circle"></i> Create Sale
                     </a>

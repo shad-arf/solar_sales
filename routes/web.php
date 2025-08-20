@@ -34,8 +34,6 @@ Route::middleware('auth')->group(function () {
 
     // Items - Special routes BEFORE resource routes to avoid conflicts
     Route::get('/items/export/csv', [ItemController::class, 'export'])->name('items.export');
-    Route::get('/items/pricing', [ItemController::class, 'pricing'])->name('items.pricing');
-    Route::post('/items/pricing/store', [ItemController::class, 'pricingStore'])->name('items.pricing.store');
     Route::get('/items/status/low-stock', [ItemController::class, 'lowStock'])->name('items.lowStock');
     Route::get('/items/status/out-of-stock', [ItemController::class, 'outOfStock'])->name('items.outOfStock');
     Route::get('/items/status/trashed', [ItemController::class, 'trashed'])->name('items.trashed');
@@ -43,7 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/items/{id}/restore', [ItemController::class, 'restore'])->name('items.restore');
     Route::delete('/items/{id}/force-delete', [ItemController::class, 'forceDelete'])->name('items.forceDelete');
     Route::patch('/items/{item}/update-stock', [ItemController::class, 'updateStock'])->name('items.updateStock');
-    
+
     // Items resource routes
     Route::resource('items', ItemController::class);
 

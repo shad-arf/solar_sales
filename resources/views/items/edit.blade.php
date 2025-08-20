@@ -4,9 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Edit Item</h2>
     <div>
-        <a href="{{ route('items.pricing') }}" class="btn btn-info me-2">
-            <i class="bi bi-currency-dollar"></i> Pricing Management
-        </a>
+
         <a href="{{ route('items.show', $item) }}" class="btn btn-outline-info me-2">
             <i class="bi bi-eye"></i> View Details
         </a>
@@ -62,13 +60,13 @@
                         <i class="bi bi-currency-dollar"></i> Pricing Information
                     </h6>
                 </div>
-                
+
                 <div class="col-12">
                     <div id="pricingTypes">
                         @php
                             $activePrices = $item->activePrices;
                             $defaultIndex = 0;
-                            
+
                             // If we have active prices from the new table, use them
                             if ($activePrices->count() > 0) {
                                 foreach ($activePrices as $index => $priceItem) {
@@ -104,7 +102,7 @@
                                         'is_default' => false
                                     ]);
                                 }
-                                
+
                                 // If no prices exist, create a default one
                                 if ($activePrices->isEmpty()) {
                                     $activePrices->push((object)[
@@ -151,7 +149,7 @@
                         </div>
                         @endforeach
                     </div>
-                    
+
                     <div class="mt-3">
                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="addPricingRow()">
                             <i class="bi bi-plus-circle"></i> Add Another Pricing Option
@@ -167,7 +165,7 @@
                         <i class="bi bi-box"></i> Inventory Information
                     </h6>
                 </div>
-                
+
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Current Stock Quantity <span class="text-danger">*</span></label>
                     <input type="number" name="quantity" value="{{ old('quantity', $item->quantity) }}" min="0" class="form-control @error('quantity') is-invalid @enderror" required>
@@ -201,7 +199,7 @@
                                 <p class="mb-0"><strong>Last Updated:</strong> {{ $item->updated_at->format('M d, Y \a\t g:i A') }}</p>
                             </div>
                             <div class="col-md-6">
-                                <p class="mb-1"><strong>Stock Status:</strong> 
+                                <p class="mb-1"><strong>Stock Status:</strong>
                                     @if($item->quantity == 0)
                                         <span class="badge bg-danger">Out of Stock</span>
                                     @elseif($item->quantity < 10)
@@ -228,9 +226,7 @@
                 <button type="button" class="btn btn-outline-info" onclick="openPricingHelper()">
                     <i class="bi bi-calculator"></i> Pricing Helper
                 </button>
-                <button type="button" class="btn btn-outline-warning" onclick="showStockUpdateModal()">
-                    <i class="bi bi-box-arrow-up-right"></i> Quick Stock Update
-                </button>
+       
             </div>
         </form>
     </div>
@@ -325,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add event listeners for quantity and default pricing changes
     document.querySelector('input[name="quantity"]').addEventListener('input', calculateTotalValue);
-    
+
     // Add event listeners to all pricing amount inputs and radio buttons
     function addPricingEventListeners() {
         document.querySelectorAll('.pricing-amount, .default-price-radio').forEach(input => {
@@ -450,7 +446,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     input.name = `pricing[${index}][price]`;
                 }
             });
-            
+
             // Update radio button values
             const radio = row.querySelector('.default-price-radio');
             if (radio) {
