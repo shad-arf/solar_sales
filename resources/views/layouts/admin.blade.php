@@ -61,6 +61,20 @@
             width: 20px;
         }
         
+        #sidebar .sidebar-menu .menu-header {
+            padding: 15px 20px 8px 20px;
+            color: #6c757d;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: none;
+        }
+        
+        #sidebar .sidebar-menu .menu-header span {
+            display: block;
+        }
+        
         .sidebar-overlay {
             position: fixed;
             top: 0;
@@ -139,10 +153,66 @@
             <h5 class="mb-0">Navigation</h5>
         </div>
         <ul class="sidebar-menu">
+            <!-- Dashboard -->
             <li>
-                <a href="{{ route('items.index') }}" class="{{ request()->is('items*') ? 'active' : '' }}">
-                    <i class="bi bi-box"></i>Items
+                <a href="{{ route('items.index') }}" class="{{ request()->is('/') || request()->is('items') && !request()->is('items/*') ? 'active' : '' }}">
+                    <i class="bi bi-speedometer2"></i>Dashboard
                 </a>
+            </li>
+            
+            <!-- Items Section -->
+            <li class="menu-header">
+                <span>Inventory Management</span>
+            </li>
+            <li>
+                <a href="{{ route('items.index') }}" class="{{ request()->is('items') && !request()->is('items/create') && !request()->is('items/pricing') ? 'active' : '' }}">
+                    <i class="bi bi-box"></i>All Items
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('items.create') }}" class="{{ request()->is('items/create') ? 'active' : '' }}">
+                    <i class="bi bi-plus-circle"></i>Add New Item
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('items.pricing') }}" class="{{ request()->is('items/pricing*') ? 'active' : '' }}">
+                    <i class="bi bi-currency-dollar"></i>Pricing Management
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('items.lowStock') }}" class="{{ request()->is('items/status/low-stock') ? 'active' : '' }}">
+                    <i class="bi bi-exclamation-triangle"></i>Low Stock Items
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('items.outOfStock') }}" class="{{ request()->is('items/status/out-of-stock') ? 'active' : '' }}">
+                    <i class="bi bi-x-circle"></i>Out of Stock
+                </a>
+            </li>
+            
+            <!-- Purchase Section -->
+            <li class="menu-header">
+                <span>Purchase Management</span>
+            </li>
+            <li>
+                <a href="{{ route('suppliers.index') }}" class="{{ request()->is('suppliers*') ? 'active' : '' }}">
+                    <i class="bi bi-building"></i>Suppliers
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('purchases.index') }}" class="{{ request()->is('purchases') && !request()->is('purchases/create') ? 'active' : '' }}">
+                    <i class="bi bi-cart-plus"></i>All Purchases
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('purchases.create') }}" class="{{ request()->is('purchases/create') ? 'active' : '' }}">
+                    <i class="bi bi-plus-circle"></i>New Purchase Order
+                </a>
+            </li>
+            
+            <!-- Sales Section -->
+            <li class="menu-header">
+                <span>Sales Management</span>
             </li>
             <li>
                 <a href="{{ route('customers.index') }}" class="{{ request()->is('customers*') ? 'active' : '' }}">
@@ -154,13 +224,38 @@
                     <i class="bi bi-graph-up"></i>Sales
                 </a>
             </li>
+            
+            <!-- Administration -->
             @if(auth()->user())
+            <li class="menu-header">
+                <span>Administration</span>
+            </li>
             <li>
                 <a href="{{ route('users.index') }}" class="{{ request()->is('users*') ? 'active' : '' }}">
-                    <i class="bi bi-person-gear"></i>Users
+                    <i class="bi bi-person-gear"></i>User Management
                 </a>
             </li>
             @endif
+            
+            <!-- Reports & Export -->
+            <li class="menu-header">
+                <span>Reports</span>
+            </li>
+            <li>
+                <a href="{{ route('items.export') }}" class="">
+                    <i class="bi bi-download"></i>Export Items
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('customers.export') }}" class="">
+                    <i class="bi bi-download"></i>Export Customers
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('sales.export') }}" class="">
+                    <i class="bi bi-download"></i>Export Sales
+                </a>
+            </li>
         </ul>
     </div>
 

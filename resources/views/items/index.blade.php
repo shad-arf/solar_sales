@@ -7,6 +7,9 @@
         <a href="{{ route('items.create') }}" class="btn btn-success me-2">
             <i class="bi bi-plus-circle"></i> Add Item
         </a>
+        <a href="{{ route('items.pricing') }}" class="btn btn-info me-2">
+            <i class="bi bi-currency-dollar"></i> Pricing Management
+        </a>
         <a href="{{ route('items.lowStock') }}" class="btn btn-warning me-2">
             <i class="bi bi-exclamation-triangle"></i> Low Stock
         </a>
@@ -378,13 +381,88 @@
                         </div>
                     </td>
                     <td class="text-end">
-                        <div class="small">
-                            <div><strong>${{ number_format($item->price, 2) }}</strong> <span class="text-muted">End user</span></div>
-                            @if($item->base_price)
-                                <div><span class="text-info">${{ number_format($item->base_price, 2) }}</span> <span class="text-muted">Reseller</span></div>
-                            @endif
-                            @if($item->operator_price)
-                                <div><span class="text-warning">${{ number_format($item->operator_price, 2) }}</span> <span class="text-muted">Installer</span></div>
+                        <div class="pricing-display">
+                            @php
+                                $activePrices = $item->activePrices;
+                                $priceIcons = [
+                                    'Regular Price' => ['class' => 'text-primary', 'icon' => 'bi-currency-dollar'],
+                                    'Wholesale Price' => ['class' => 'text-info', 'icon' => 'bi-box'],
+                                    'Operator Price' => ['class' => 'text-warning', 'icon' => 'bi-tools'],
+                                    'Per piece' => ['class' => 'text-success', 'icon' => 'bi-boxes'],
+                                    'Per kg' => ['class' => 'text-secondary', 'icon' => 'bi-speedometer'],
+                                ];
+                            @endphp
+                            
+                            @if($activePrices->count() > 0)
+                                <div class="mb-1">
+                                    @foreach($activePrices->take(3) as $priceItem)
+                                        @php
+                                            $iconData = $priceIcons[$priceItem->name] ?? ['class' => 'text-dark', 'icon' => 'bi-tag'];
+                                        @endphp
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="small text-muted">
+                                                <i class="{{ $iconData['icon'] }} me-1"></i>{{ $priceItem->name }}
+                                                @if($priceItem->is_default)
+                                                    <i class="bi bi-star-fill text-warning ms-1" title="Default price"></i>
+                                                @endif
+                                            </span>
+                                            <strong class="{{ $iconData['class'] }}">${{ number_format($priceItem->price, 2) }}</strong>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                
+                                @if($activePrices->count() > 3)
+                                    <div class="small text-muted text-center">
+                                        <i class="bi bi-plus-circle me-1"></i>{{ $activePrices->count() - 3 }} more prices
+                                    </div>
+                                @endif
+                                
+                                @if($activePrices->count() > 1)
+                                    <div class="border-top pt-1 mt-1">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="small text-muted">
+                                                <i class="bi bi-graph-up me-1"></i>Range
+                                            </span>
+                                            <small class="text-muted">
+                                                ${{ number_format($activePrices->min('price'), 2) }} - ${{ number_format($activePrices->max('price'), 2) }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                @endif
+                            @else
+                                {{-- Fallback to legacy pricing if no new pricing exists --}}
+                                @php
+                                    $legacyPrices = [];
+                                    if ($item->price > 0) {
+                                        $legacyPrices[] = ['value' => $item->price, 'label' => 'Regular', 'class' => 'text-primary', 'icon' => 'bi-currency-dollar'];
+                                    }
+                                    if ($item->base_price > 0) {
+                                        $legacyPrices[] = ['value' => $item->base_price, 'label' => 'Wholesale', 'class' => 'text-info', 'icon' => 'bi-box'];
+                                    }
+                                    if ($item->operator_price > 0) {
+                                        $legacyPrices[] = ['value' => $item->operator_price, 'label' => 'Operator', 'class' => 'text-warning', 'icon' => 'bi-tools'];
+                                    }
+                                @endphp
+                                
+                                @if(count($legacyPrices) > 0)
+                                    <div class="mb-1">
+                                        @foreach($legacyPrices as $price)
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <span class="small text-muted">
+                                                    <i class="{{ $price['icon'] }} me-1"></i>{{ $price['label'] }}
+                                                </span>
+                                                <strong class="{{ $price['class'] }}">${{ number_format($price['value'], 2) }}</strong>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    <div class="small text-muted">
+                                        <i class="bi bi-exclamation-circle me-1"></i>Legacy pricing
+                                    </div>
+                                @else
+                                    <span class="text-muted small">
+                                        <i class="bi bi-dash-circle me-1"></i>No pricing set
+                                    </span>
+                                @endif
                             @endif
                         </div>
                     </td>
@@ -444,13 +522,19 @@
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
                                 <button type="button"
+                                        class="btn btn-sm btn-outline-success"
+                                        title="Manage Pricing"
+                                        onclick="showPricingModal({{ $item->id }}, @json($item->name), {{ $item->price }}, {{ $item->base_price ?? 0 }}, {{ $item->operator_price ?? 0 }})">
+                                    <i class="bi bi-currency-dollar"></i>
+                                </button>
+                                <button type="button"
                                         class="btn btn-sm btn-outline-secondary"
                                         title="Quick Stock Update"
-                                        onclick="showStockModal({{ $item->id }}, '{{ $item->name }}', {{ $item->quantity }})">
+                                        onclick="showStockModal({{ $item->id }}, @json($item->name), {{ $item->quantity }})">
                                     <i class="bi bi-box-arrow-up-right"></i>
                                 </button>
                                 <form action="{{ route('items.destroy', $item) }}" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Soft delete {{ $item->name }}?');">
+                                      onsubmit="return confirm('Soft delete ' + @json($item->name) + '?');">
                                     @csrf
                                     @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger" title="Delete Item">
@@ -535,6 +619,104 @@
     </div>
 </div>
 
+<!-- Quick Pricing Modal -->
+<div class="modal fade" id="pricingModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Quick Price Update</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="pricingForm" method="POST">
+                @csrf
+                @method('PATCH')
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Item</label>
+                        <input type="text" class="form-control" id="pricingItemName" readonly>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="quick_regular_price" class="form-label">
+                                <i class="bi bi-currency-dollar text-primary me-1"></i>Regular Price
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="quick_regular_price" name="price" step="0.01" min="0">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="quick_base_price" class="form-label">
+                                <i class="bi bi-box text-info me-1"></i>Wholesale Price
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="quick_base_price" name="base_price" step="0.01" min="0">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="quick_operator_price" class="form-label">
+                                <i class="bi bi-tools text-warning me-1"></i>Operator Price
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="quick_operator_price" name="operator_price" step="0.01" min="0">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="card-title mb-2">
+                                        <i class="bi bi-calculator me-1"></i>Pricing Calculator
+                                    </h6>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Cost Price</label>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" class="form-control" id="calc_cost" step="0.01" placeholder="0.00">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Markup %</label>
+                                            <input type="number" class="form-control form-control-sm" id="calc_markup" value="25" min="0">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Suggested Price</label>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">$</span>
+                                                <input type="text" class="form-control" id="calc_result" readonly>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="applyCalculatedPrice()">
+                                            Apply to Regular Price
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update Prices</button>
+                    <a href="" id="fullPricingLink" class="btn btn-info">
+                        <i class="bi bi-currency-dollar"></i> Advanced Pricing
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 // Main functionality
 function toggleAdvanced() {
@@ -573,6 +755,41 @@ function showStockModal(itemId, itemName, currentStock) {
 
     const modal = new bootstrap.Modal(document.getElementById('stockModal'));
     modal.show();
+}
+
+function showPricingModal(itemId, itemName, regularPrice, basePrice, operatorPrice) {
+    document.getElementById('pricingItemName').value = itemName;
+    document.getElementById('quick_regular_price').value = regularPrice > 0 ? regularPrice : '';
+    document.getElementById('quick_base_price').value = basePrice > 0 ? basePrice : '';
+    document.getElementById('quick_operator_price').value = operatorPrice > 0 ? operatorPrice : '';
+    
+    // Set up form action
+    document.getElementById('pricingForm').action = `/items/${itemId}`;
+    
+    // Set up advanced pricing link
+    document.getElementById('fullPricingLink').href = `/items/pricing?item=${itemId}`;
+    
+    // Clear calculator
+    document.getElementById('calc_cost').value = '';
+    document.getElementById('calc_markup').value = '25';
+    document.getElementById('calc_result').value = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('pricingModal'));
+    modal.show();
+}
+
+function calculateQuickPrice() {
+    const cost = parseFloat(document.getElementById('calc_cost').value) || 0;
+    const markup = parseFloat(document.getElementById('calc_markup').value) || 0;
+    const result = cost * (1 + markup / 100);
+    document.getElementById('calc_result').value = result > 0 ? result.toFixed(2) : '';
+}
+
+function applyCalculatedPrice() {
+    const result = document.getElementById('calc_result').value;
+    if (result) {
+        document.getElementById('quick_regular_price').value = result;
+    }
 }
 
 function updateStockPreview() {
@@ -720,6 +937,15 @@ document.addEventListener('DOMContentLoaded', function() {
     if (stockActionSelect && quantityInput) {
         stockActionSelect.addEventListener('change', updateStockPreview);
         quantityInput.addEventListener('input', updateStockPreview);
+    }
+    
+    // Pricing modal calculator functionality
+    const calcCost = document.getElementById('calc_cost');
+    const calcMarkup = document.getElementById('calc_markup');
+    
+    if (calcCost && calcMarkup) {
+        calcCost.addEventListener('input', calculateQuickPrice);
+        calcMarkup.addEventListener('input', calculateQuickPrice);
     }
 
     // Keyboard shortcuts

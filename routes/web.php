@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\AuthController;
 
 
@@ -30,16 +32,20 @@ Route::middleware('auth')->group(function () {
     Route::delete('/users/{user}', [AuthController::class, 'destroy'])->name('users.destroy');
     Route::post('/users/{id}/restore', [AuthController::class, 'restore'])->name('users.restore');
 
-    // Items
-    Route::resource('items', ItemController::class);
+    // Items - Special routes BEFORE resource routes to avoid conflicts
     Route::get('/items/export/csv', [ItemController::class, 'export'])->name('items.export');
-    Route::patch('/items/{item}/update-stock', [ItemController::class, 'updateStock'])->name('items.updateStock');
-    Route::post('/items/bulk-stock-update', [ItemController::class, 'bulkStockUpdate'])->name('items.bulkStockUpdate');
+    Route::get('/items/pricing', [ItemController::class, 'pricing'])->name('items.pricing');
+    Route::post('/items/pricing/store', [ItemController::class, 'pricingStore'])->name('items.pricing.store');
     Route::get('/items/status/low-stock', [ItemController::class, 'lowStock'])->name('items.lowStock');
     Route::get('/items/status/out-of-stock', [ItemController::class, 'outOfStock'])->name('items.outOfStock');
     Route::get('/items/status/trashed', [ItemController::class, 'trashed'])->name('items.trashed');
+    Route::post('/items/bulk-stock-update', [ItemController::class, 'bulkStockUpdate'])->name('items.bulkStockUpdate');
     Route::post('/items/{id}/restore', [ItemController::class, 'restore'])->name('items.restore');
     Route::delete('/items/{id}/force-delete', [ItemController::class, 'forceDelete'])->name('items.forceDelete');
+    Route::patch('/items/{item}/update-stock', [ItemController::class, 'updateStock'])->name('items.updateStock');
+    
+    // Items resource routes
+    Route::resource('items', ItemController::class);
 
     // Customers
     Route::resource('customers', CustomerController::class);
@@ -56,6 +62,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/customer/{customer}/history', [SaleController::class, 'history'])->name('sales.history');
     Route::post('/sales/{id}/restore', [SaleController::class, 'restore'])->name('sales.restore');
     Route::delete('/sales/{id}/force-delete', [SaleController::class, 'forceDelete'])->name('sales.forceDelete');
+
+    // Suppliers
+    Route::resource('suppliers', SupplierController::class);
+    Route::post('/suppliers/{supplier}/toggle-status', [SupplierController::class, 'toggleStatus'])->name('suppliers.toggleStatus');
+
+    // Purchases
+    Route::resource('purchases', PurchaseController::class);
+    Route::post('/purchases/{purchase}/complete', [PurchaseController::class, 'complete'])->name('purchases.complete');
+    Route::get('/suppliers/{supplier}/history', [PurchaseController::class, 'supplierHistory'])->name('suppliers.history');
 });
 
 // Authenticated admin routes

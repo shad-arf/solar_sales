@@ -56,10 +56,8 @@
             <thead class="table-light">
                 <tr>
                     <th>Item</th>
-                    <th class="text-end">End user ($)</th>
-                    <th class="text-end">Installer ($)</th>
-                    <th class="text-end">Reseller ($)</th>
-                    <th>Type</th>
+                    <th>Price Type</th>
+                    <th class="text-end">Unit Price ($)</th>
                     <th class="text-center">Qty</th>
                     <th class="text-center">Discount (%)</th>
                     <th class="text-end">Line Total ($)</th>
@@ -71,28 +69,22 @@
                     @foreach(old('item_id') as $key => $oldItemId)
                         <tr class="item-row">
                             <td>
-                                <select name="item_id[]" class="form-select item-select" required onchange="updateRow(this)">
+                                <select name="item_id[]" class="form-select item-select" required onchange="updateItemOptions(this)">
                                     <option value="" disabled>Select…</option>
                                     @foreach($items as $itm)
-                                        <option value="{{ $itm->id }}"
-                                                data-price="{{ $itm->price }}"
-                                                data-op-price="{{ $itm->operator_price }}"
-                                                data-base-price="{{ $itm->base_price }}"
-                                                {{ $oldItemId == $itm->id ? 'selected' : '' }}>
+                                        <option value="{{ $itm->id }}" {{ $oldItemId == $itm->id ? 'selected' : '' }}>
                                             {{ $itm->name }}
                                         </option>
                                     @endforeach
                                 </select>
                             </td>
-                            <td><input type="text" class="form-control line-price-reg"  readonly></td>
-                            <td><input type="text" class="form-control line-price-op"   readonly></td>
-                            <td><input type="text" class="form-control line-price-base" readonly></td>
                             <td>
-                                <select name="price_type[]" class="form-select price-type" onchange="updateRow(this)">
-                                    <option value="regular"  {{ old("price_type.$key")=='regular'  ? 'selected':'' }}>End user</option>
-                                    <option value="operator" {{ old("price_type.$key")=='operator'? 'selected':'' }}>Installer</option>
-                                    <option value="base"     {{ old("price_type.$key")=='base'    ? 'selected':'' }}>Reseller</option>
+                                <select name="price_id[]" class="form-select price-select" required onchange="updateRow(this)">
+                                    <option value="" disabled>Select price type…</option>
                                 </select>
+                            </td>
+                            <td>
+                                <input type="text" class="form-control unit-price" readonly>
                             </td>
                             <td>
                                 <input type="number" name="quantity[]" min="1"
@@ -180,27 +172,20 @@
   <tbody>
     <tr id="item-row-template">
       <td>
-        <select name="item_id[]" class="form-select item-select" required onchange="updateRow(this)">
+        <select name="item_id[]" class="form-select item-select" required onchange="updateItemOptions(this)">
           <option value="" disabled selected>Select…</option>
           @foreach($items as $itm)
-            <option value="{{ $itm->id }}"
-                    data-price="{{ $itm->price }}"
-                    data-op-price="{{ $itm->operator_price }}"
-                    data-base-price="{{ $itm->base_price }}">
-              {{ $itm->name }}
-            </option>
+            <option value="{{ $itm->id }}">{{ $itm->name }}</option>
           @endforeach
         </select>
       </td>
-      <td><input type="text" class="form-control line-price-reg" readonly></td>
-      <td><input type="text" class="form-control line-price-op"  readonly></td>
-      <td><input type="text" class="form-control line-price-base" readonly></td>
       <td>
-        <select name="price_type[]" class="form-select price-type" onchange="updateRow(this)">
-          <option value="regular" selected>End user</option>
-          <option value="operator">Installer</option>
-          <option value="base">Reseller</option>
+        <select name="price_id[]" class="form-select price-select" required onchange="updateRow(this)">
+          <option value="" disabled selected>Select price type…</option>
         </select>
+      </td>
+      <td>
+        <input type="text" class="form-control unit-price" readonly>
       </td>
       <td>
         <input type="number" name="quantity[]" value="1" min="1"
@@ -223,6 +208,9 @@
 </table>
 
 <script>
+  // Item data from Laravel
+  const itemsData = @json($items->keyBy('id'));
+
   document.getElementById('add-item-btn').addEventListener('click', addItemRow);
 
   function addItemRow() {
@@ -232,23 +220,6 @@
     row.classList.add('item-row');
     row.style.display = '';
     document.getElementById('items-body').appendChild(row);
-    
-    // Set price type based on selected customer type
-    const customerTypeSelect = document.getElementById('customer-type-select');
-    if (customerTypeSelect) {
-      const customerType = customerTypeSelect.value;
-      const priceTypeSelect = row.querySelector('.price-type');
-      
-      if (customerType === 'installer') {
-        priceTypeSelect.value = 'operator';
-      } else if (customerType === 'reseller') {
-        priceTypeSelect.value = 'base';
-      } else {
-        priceTypeSelect.value = 'regular';
-      }
-    }
-    
-    updateRow(row.querySelector('.item-select'));
   }
 
   function removeRow(btn) {
@@ -256,32 +227,52 @@
     recalcAll();
   }
 
-  function updateRow(el) {
-    const row       = el.closest('tr');
-    const opt       = row.querySelector('.item-select').selectedOptions[0] || {};
-    const reg       = parseFloat(opt.dataset.price     || 0);
-    const op        = parseFloat(opt.dataset.opPrice   || 0);
-    const baseP     = parseFloat(opt.dataset.basePrice || 0);
-    const type      = row.querySelector('.price-type').value;
-    const qty       = +row.querySelector('.line-quantity').value || 0;
-    const discField = row.querySelector('.line-discount');
-
-    // display prices
-    row.querySelector('.line-price-reg').value  = reg.toFixed(2);
-    row.querySelector('.line-price-op').value   = op.toFixed(2);
-    row.querySelector('.line-price-base').value = baseP.toFixed(2);
-
-    // calculate default discount if needed
-    if (el.classList.contains('price-type') || el.classList.contains('item-select')) {
-      let pct = 0;
-      if (type==='operator') pct = ((reg-op)/reg)*100;
-      if (type==='base')     pct = ((reg-baseP)/reg)*100;
-      discField.value = pct.toFixed(2);
+  function updateItemOptions(selectElement) {
+    const row = selectElement.closest('tr');
+    const itemId = selectElement.value;
+    const priceSelect = row.querySelector('.price-select');
+    
+    // Clear existing price options
+    priceSelect.innerHTML = '<option value="" disabled selected>Select price type…</option>';
+    
+    if (itemId && itemsData[itemId]) {
+      const item = itemsData[itemId];
+      // Add price options for this item
+      if (item.item_prices) {
+        item.item_prices.forEach(price => {
+          const option = document.createElement('option');
+          option.value = price.id;
+          option.textContent = `${price.name} ($${parseFloat(price.price).toFixed(2)})`;
+          option.dataset.price = price.price;
+          priceSelect.appendChild(option);
+        });
+      }
     }
+    
+    // Reset other fields
+    row.querySelector('.unit-price').value = '';
+    row.querySelector('.line-total').value = '0.00';
+    recalcAll();
+  }
 
-    const finalDisc = Math.min(100, Math.max(0, parseFloat(discField.value)||0));
-    const lineTotal = reg * qty * (1 - finalDisc/100);
-    row.querySelector('.line-total').value = lineTotal.toFixed(2);
+  function updateRow(el) {
+    const row = el.closest('tr');
+    const priceSelect = row.querySelector('.price-select');
+    const selectedOption = priceSelect.selectedOptions[0];
+    const qty = +row.querySelector('.line-quantity').value || 0;
+    const discField = row.querySelector('.line-discount');
+    
+    if (selectedOption && selectedOption.dataset.price) {
+      const unitPrice = parseFloat(selectedOption.dataset.price);
+      row.querySelector('.unit-price').value = unitPrice.toFixed(2);
+      
+      const finalDisc = Math.min(100, Math.max(0, parseFloat(discField.value) || 0));
+      const lineTotal = unitPrice * qty * (1 - finalDisc/100);
+      row.querySelector('.line-total').value = lineTotal.toFixed(2);
+    } else {
+      row.querySelector('.unit-price').value = '';
+      row.querySelector('.line-total').value = '0.00';
+    }
 
     recalcAll();
   }
@@ -311,10 +302,13 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    if (! document.querySelector('.item-row')) {
+    if (!document.querySelector('.item-row')) {
       addItemRow();
     } else {
-      document.querySelectorAll('.item-select').forEach(el=>updateRow(el));
+      // Initialize existing rows
+      document.querySelectorAll('.item-select').forEach(el => {
+        if (el.value) updateItemOptions(el);
+      });
     }
   });
 
@@ -323,18 +317,28 @@
   if (customerTypeSelect) {
     customerTypeSelect.addEventListener('change', function() {
       const customerType = this.value;
-      let suggestedPriceType = 'regular'; // default to End user
+      let suggestedPriceName = '';
       
+      // Map customer type to likely price names
       if (customerType === 'installer') {
-        suggestedPriceType = 'operator';
+        suggestedPriceName = 'installer';
       } else if (customerType === 'reseller') {
-        suggestedPriceType = 'base';
+        suggestedPriceName = 'reseller';
+      } else {
+        suggestedPriceName = 'retail'; // or 'end user'
       }
       
-      // Update all existing price type dropdowns
-      document.querySelectorAll('.price-type').forEach(priceSelect => {
-        priceSelect.value = suggestedPriceType;
-        updateRow(priceSelect);
+      // Update all existing price dropdowns to the suggested type
+      document.querySelectorAll('.price-select').forEach(priceSelect => {
+        const options = Array.from(priceSelect.options);
+        const matchingOption = options.find(opt => 
+          opt.textContent.toLowerCase().includes(suggestedPriceName.toLowerCase())
+        );
+        
+        if (matchingOption) {
+          priceSelect.value = matchingOption.value;
+          updateRow(priceSelect);
+        }
       });
     });
   }
