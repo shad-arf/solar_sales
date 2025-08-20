@@ -3,7 +3,7 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="mb-1">{{ $item->name }}</h2>
+        <h2>{{ $item->name }}</h2>
         <div class="text-muted">
             <code class="bg-light px-2 py-1 rounded">{{ $item->code }}</code>
             @if($item->trashed())
@@ -11,8 +11,8 @@
             @endif
         </div>
     </div>
-    <div class="btn-group">
-        <a href="{{ route('items.index') }}" class="btn btn-outline-secondary">
+    <div>
+        <a href="{{ route('items.index') }}" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Back to Items
         </a>
         @if(!$item->trashed())
@@ -24,63 +24,60 @@
 </div>
 
 <div class="row">
-    <!-- Item Details Card -->
+    <!-- Main Item Information -->
     <div class="col-md-8">
+        <!-- Basic Information Card -->
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Item Details</h5>
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle"></i> Basic Information
+                </h5>
             </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label text-muted">Item Name</label>
-                            <div class="fw-bold">{{ $item->name }}</div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted">Item Code</label>
-                            <div><code class="bg-light px-2 py-1 rounded">{{ $item->code }}</code></div>
-                        </div>
-                        @if($item->description)
-                            <div class="mb-3">
-                                <label class="form-label text-muted">Description</label>
-                                <div>{{ $item->description }}</div>
-                            </div>
-                        @endif
+                        <table class="table table-borderless">
+                            <tr>
+                                <th width="40%">Name:</th>
+                                <td>{{ $item->name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Code:</th>
+                                <td><code class="bg-light px-2 py-1 rounded">{{ $item->code }}</code></td>
+                            </tr>
+                            <tr>
+                                <th>Description:</th>
+                                <td>{{ $item->description ?: 'No description provided' }}</td>
+                            </tr>
+                            <tr>
+                                <th>Current Stock:</th>
+                                <td>
+                                    <span class="badge fs-6 {{ $item->stock_badge_class }}">
+                                        {{ $item->quantity }} units
+                                    </span>
+                                    <br><small class="text-muted">Status: {{ $item->stock_status }}</small>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
                     <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label text-muted">Current Stock</label>
-                            <div>
-                                @php
-                                    $stockClass = '';
-                                    $stockIcon = 'bi-check-circle';
-                                    if ($item->quantity == 0) {
-                                        $stockClass = 'text-danger';
-                                        $stockIcon = 'bi-x-circle';
-                                    } elseif ($item->quantity < 10) {
-                                        $stockClass = 'text-warning';
-                                        $stockIcon = 'bi-exclamation-triangle';
-                                    } elseif ($item->quantity > 100) {
-                                        $stockClass = 'text-info';
-                                        $stockIcon = 'bi-arrow-up-circle';
-                                    }
-                                @endphp
-                                <span class="badge fs-6 {{ $item->quantity == 0 ? 'bg-danger' : ($item->quantity < 10 ? 'bg-warning text-dark' : 'bg-success') }}">
-                                    <i class="{{ $stockIcon }} me-1"></i>{{ $item->quantity }} units
-                                </span>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted">Date Added</label>
-                            <div>{{ $item->created_at->format('M d, Y \a\t g:i A') }}</div>
-                        </div>
-                        @if($item->updated_at != $item->created_at)
-                            <div class="mb-3">
-                                <label class="form-label text-muted">Last Updated</label>
-                                <div>{{ $item->updated_at->format('M d, Y \a\t g:i A') }}</div>
-                            </div>
-                        @endif
+                        <table class="table table-borderless">
+                            <tr>
+                                <th width="40%">Date Added:</th>
+                                <td>{{ $item->created_at->format('M d, Y g:i A') }}</td>
+                            </tr>
+                            <tr>
+                                <th>Last Updated:</th>
+                                <td>{{ $item->updated_at->format('M d, Y g:i A') }}</td>
+                            </tr>
+                            <tr>
+                                <th>Total Value:</th>
+                                <td>
+                                    <strong class="text-success">${{ number_format($item->total_value, 2) }}</strong>
+                                    <br><small class="text-muted">{{ $item->quantity }} × ${{ number_format($item->primary_price, 2) }}</small>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -88,60 +85,101 @@
 
         <!-- Pricing Information Card -->
         <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-currency-dollar"></i> Pricing Information</h5>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-currency-dollar"></i> Pricing Information
+                </h5>
+                <a href="{{ route('items.pricing') }}?item={{ $item->id }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil-square"></i> Manage Pricing
+                </a>
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="text-center p-3 border rounded">
-                            <div class="text-muted small">End User Price</div>
-                            <div class="fs-4 fw-bold text-primary">${{ number_format($item->price, 2) }}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="text-center p-3 border rounded">
-                            <div class="text-muted small">Reseller Price</div>
-                            <div class="fs-4 fw-bold text-info">
-                                @if($item->base_price)
-                                    ${{ number_format($item->base_price, 2) }}
-                                @else
-                                    <span class="text-muted">Not set</span>
-                                @endif
+                @if($item->itemPrices->count() > 0)
+                    <div class="row">
+                        @foreach($item->itemPrices->where('is_active', true) as $price)
+                            <div class="col-md-4 mb-3">
+                                <div class="card border {{ $price->is_default ? 'border-warning bg-warning bg-opacity-10' : 'border-light' }}">
+                                    <div class="card-body text-center">
+                                        @if($price->is_default)
+                                            <div class="mb-2">
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                                <small class="text-warning fw-bold">DEFAULT</small>
+                                            </div>
+                                        @endif
+                                        <h6 class="card-title">{{ $price->name }}</h6>
+                                        <h4 class="text-primary">${{ number_format($price->price, 2) }}</h4>
+                                        @if($price->unit)
+                                            <small class="text-muted">per {{ $price->unit }}</small>
+                                        @endif
+                                        @if($price->description)
+                                            <p class="small text-muted mt-2 mb-0">{{ $price->description }}</p>
+                                        @endif
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        @endforeach
                     </div>
-                    <div class="col-md-4">
-                        <div class="text-center p-3 border rounded">
-                            <div class="text-muted small">Installer Price</div>
-                            <div class="fs-4 fw-bold text-warning">
-                                @if($item->operator_price)
-                                    ${{ number_format($item->operator_price, 2) }}
-                                @else
-                                    <span class="text-muted">Not set</span>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                @if($item->base_price || $item->operator_price)
-                    <div class="mt-3">
-                        <h6>Price Margins</h6>
-                        <div class="row">
-                            @if($item->base_price)
-                                <div class="col-md-6">
-                                    <small class="text-muted">Reseller Discount:</small>
-                                    <span class="badge bg-info">{{ number_format((($item->price - $item->base_price) / $item->price) * 100, 1) }}%</span>
+                    @if($item->itemPrices->count() > 1)
+                        <div class="alert alert-info">
+                            <div class="row text-center">
+                                <div class="col-md-3">
+                                    <strong>Lowest Price</strong><br>
+                                    ${{ number_format($item->itemPrices->where('is_active', true)->min('price'), 2) }}
                                 </div>
-                            @endif
-                            @if($item->operator_price)
-                                <div class="col-md-6">
-                                    <small class="text-muted">Installer Discount:</small>
-                                    <span class="badge bg-warning">{{ number_format((($item->price - $item->operator_price) / $item->price) * 100, 1) }}%</span>
+                                <div class="col-md-3">
+                                    <strong>Highest Price</strong><br>
+                                    ${{ number_format($item->itemPrices->where('is_active', true)->max('price'), 2) }}
                                 </div>
-                            @endif
+                                <div class="col-md-3">
+                                    <strong>Average Price</strong><br>
+                                    ${{ number_format($item->itemPrices->where('is_active', true)->avg('price'), 2) }}
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Price Range</strong><br>
+                                    {{ number_format((($item->itemPrices->where('is_active', true)->max('price') - $item->itemPrices->where('is_active', true)->min('price')) / $item->itemPrices->where('is_active', true)->min('price')) * 100, 1) }}%
+                                </div>
+                            </div>
                         </div>
+                    @endif
+                @else
+                    <!-- Legacy Pricing Display -->
+                    <div class="alert alert-warning">
+                        <h6><i class="bi bi-exclamation-triangle"></i> Legacy Pricing System</h6>
+                        <p class="mb-0">This item is using the old pricing system. Consider migrating to the new flexible pricing structure.</p>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card border-primary">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Regular Price</h6>
+                                    <h4 class="text-primary">${{ number_format($item->price, 2) }}</h4>
+                                    <small class="text-muted">Standard retail price</small>
+                                </div>
+                            </div>
+                        </div>
+                        @if($item->operator_price && $item->operator_price > 0)
+                        <div class="col-md-4">
+                            <div class="card border-info">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Installer Price</h6>
+                                    <h4 class="text-info">${{ number_format($item->operator_price, 2) }}</h4>
+                                    <small class="text-muted">For certified installers</small>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+                        @if($item->base_price && $item->base_price > 0)
+                        <div class="col-md-4">
+                            <div class="card border-success">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Base Price</h6>
+                                    <h4 class="text-success">${{ number_format($item->base_price, 2) }}</h4>
+                                    <small class="text-muted">Wholesale price</small>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 @endif
             </div>
@@ -149,141 +187,176 @@
 
         <!-- Sales History Card -->
         @if($item->orderItems->count() > 0)
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-graph-up"></i> Recent Sales History</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Customer</th>
-                                    <th>Quantity</th>
-                                    <th>Unit Price</th>
-                                    <th>Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($item->orderItems->take(10) as $orderItem)
-                                    <tr>
-                                        <td>{{ $orderItem->created_at->format('M d, Y') }}</td>
-                                        <td>
-                                            @if($orderItem->sale && $orderItem->sale->customer)
-                                                {{ $orderItem->sale->customer->name }}
-                                            @else
-                                                <span class="text-muted">—</span>
-                                            @endif
-                                        </td>
-                                        <td>{{ $orderItem->quantity }}</td>
-                                        <td>${{ number_format($orderItem->unit_price, 2) }}</td>
-                                        <td>${{ number_format($orderItem->line_total, 2) }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    @if($item->orderItems->count() > 10)
-                        <div class="text-center mt-2">
-                            <small class="text-muted">Showing 10 most recent sales</small>
-                        </div>
-                    @endif
-                </div>
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-graph-up"></i> Sales History
+                </h5>
             </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Quantity</th>
+                                <th>Unit Price</th>
+                                <th>Price Type</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($item->orderItems->sortByDesc('created_at')->take(10) as $orderItem)
+                            <tr>
+                                <td>{{ $orderItem->sale->sale_date }}</td>
+                                <td>
+                                    <a href="{{ route('sales.show', $orderItem->sale) }}" class="text-decoration-none">
+                                        {{ $orderItem->sale->customer->name ?? 'Unknown Customer' }}
+                                    </a>
+                                </td>
+                                <td>{{ $orderItem->quantity }}</td>
+                                <td>${{ number_format($orderItem->unit_price, 2) }}</td>
+                                <td>
+                                    <span class="badge bg-light text-dark">{{ $orderItem->price_type ?? 'Regular' }}</span>
+                                </td>
+                                <td class="text-end">${{ number_format($orderItem->line_total, 2) }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-info">
+                                <th colspan="2">Total Sales</th>
+                                <th>{{ $item->orderItems->sum('quantity') }} units</th>
+                                <th>-</th>
+                                <th>-</th>
+                                <th class="text-end">${{ number_format($item->orderItems->sum('line_total'), 2) }}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                @if($item->orderItems->count() > 10)
+                    <div class="text-center mt-2">
+                        <small class="text-muted">Showing latest 10 sales. Total {{ $item->orderItems->count() }} sales recorded.</small>
+                    </div>
+                @endif
+            </div>
+        </div>
         @endif
     </div>
 
-    <!-- Statistics Sidebar -->
+    <!-- Sidebar -->
     <div class="col-md-4">
-        <!-- Inventory Stats -->
+        <!-- Quick Stats Card -->
         <div class="card mb-4">
             <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Inventory Stats</h6>
+                <h6 class="mb-0">Quick Statistics</h6>
             </div>
             <div class="card-body">
                 <div class="row text-center">
-                    <div class="col-12 mb-3">
-                        <div class="border rounded p-3">
-                            <div class="text-muted small">Current Value</div>
-                            <div class="fs-5 fw-bold text-success">
-                                ${{ number_format($item->price * $item->quantity, 2) }}
-                            </div>
-                        </div>
+                    <div class="col-6 border-end">
+                        <h4 class="text-primary">{{ $item->orderItems->sum('quantity') }}</h4>
+                        <small class="text-muted">Total Sold</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">${{ number_format($item->orderItems->sum('line_total'), 2) }}</h4>
+                        <small class="text-muted">Revenue</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-6 border-end">
+                        <h5 class="text-info">{{ $item->quantity }}</h5>
+                        <small class="text-muted">In Stock</small>
+                    </div>
+                    <div class="col-6">
+                        <h5 class="text-warning">${{ number_format($item->total_value, 2) }}</h5>
+                        <small class="text-muted">Stock Value</small>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Sales Statistics -->
-        @if($salesStats['total_sold'] > 0)
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-graph-up-arrow"></i> Sales Statistics</h6>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between">
-                            <span class="text-muted">Total Sold:</span>
-                            <span class="fw-bold">{{ number_format($salesStats['total_sold']) }} units</span>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between">
-                            <span class="text-muted">Total Revenue:</span>
-                            <span class="fw-bold text-success">${{ number_format($salesStats['total_revenue'], 2) }}</span>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between">
-                            <span class="text-muted">Avg Sale Price:</span>
-                            <span class="fw-bold">${{ number_format($salesStats['avg_sale_price'], 2) }}</span>
-                        </div>
-                    </div>
-                    @if($salesStats['last_sale_date'])
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span class="text-muted">Last Sale:</span>
-                                <span class="fw-bold">{{ \Carbon\Carbon::parse($salesStats['last_sale_date'])->format('M d, Y') }}</span>
-                            </div>
-                        </div>
-                    @endif
+        <!-- Quick Actions Card -->
+        @if(!$item->trashed())
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ route('items.edit', $item) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil-square"></i> Edit Item Details
+                    </a>
+                    <a href="{{ route('items.pricing') }}?item={{ $item->id }}" class="btn btn-outline-success">
+                        <i class="bi bi-currency-dollar"></i> Manage Pricing
+                    </a>
+                    <button type="button" class="btn btn-outline-warning" onclick="showStockModal({{ $item->id }}, @json($item->name), {{ $item->quantity }})">
+                        <i class="bi bi-boxes"></i> Update Stock
+                    </button>
+                    <a href="{{ route('sales.create') }}?item={{ $item->id }}" class="btn btn-outline-info">
+                        <i class="bi bi-plus-circle"></i> Create Sale
+                    </a>
                 </div>
             </div>
+        </div>
         @endif
 
-        <!-- Quick Actions -->
-        @if(!$item->trashed())
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <button type="button" 
-                                class="btn btn-outline-primary btn-sm"
-                                onclick="showStockModal({{ $item->id }}, '{{ $item->name }}', {{ $item->quantity }})">
-                            <i class="bi bi-box-arrow-up-right"></i> Update Stock
-                        </button>
-                        <a href="{{ route('items.edit', $item) }}" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-pencil-square"></i> Edit Item
-                        </a>
-                        <form action="{{ route('items.destroy', $item) }}" method="POST" class="d-inline"
-                              onsubmit="return confirm('Are you sure you want to delete {{ $item->name }}?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-outline-danger btn-sm w-100">
-                                <i class="bi bi-trash"></i> Delete Item
-                            </button>
-                        </form>
-                    </div>
-                </div>
+        <!-- Performance Insights -->
+        @if($item->orderItems->count() > 0)
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Performance Insights</h6>
             </div>
+            <div class="card-body">
+                @php
+                    $totalSold = $item->orderItems->sum('quantity');
+                    $totalRevenue = $item->orderItems->sum('line_total');
+                    $avgSalePrice = $totalSold > 0 ? $totalRevenue / $totalSold : 0;
+                    $lastSale = $item->orderItems->sortByDesc('created_at')->first();
+                    $monthsSinceLastSale = $lastSale ? $lastSale->created_at->diffInMonths(now()) : 0;
+                @endphp
+
+                <div class="mb-3">
+                    <label class="form-label small">Average Sale Price</label>
+                    <h5 class="text-primary">${{ number_format($avgSalePrice, 2) }}</h5>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small">Last Sale</label>
+                    @if($lastSale)
+                        <h6>{{ $lastSale->created_at->diffForHumans() }}</h6>
+                        <small class="text-muted">{{ $lastSale->created_at}}</small>
+                    @else
+                        <h6 class="text-muted">No sales yet</h6>
+                    @endif
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small">Stock Turn Rate</label>
+                    @if($item->quantity > 0 && $totalSold > 0)
+                        @php $turnRate = ($totalSold / $item->quantity) * 100; @endphp
+                        <div class="progress">
+                            <div class="progress-bar" style="width: {{ min($turnRate, 100) }}%"></div>
+                        </div>
+                        <small class="text-muted">{{ number_format($turnRate, 1) }}% of current stock sold historically</small>
+                    @else
+                        <p class="text-muted">No turn rate data</p>
+                    @endif
+                </div>
+
+                @if($monthsSinceLastSale > 3 && $item->quantity > 0)
+                    <div class="alert alert-warning alert-sm">
+                        <small><i class="bi bi-exclamation-triangle"></i> Slow moving item - Last sale {{ $monthsSinceLastSale }} months ago</small>
+                    </div>
+                @endif
+            </div>
+        </div>
         @endif
     </div>
 </div>
 
-<!-- Quick Stock Update Modal -->
+<!-- Stock Update Modal -->
 <div class="modal fade" id="stockModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -291,35 +364,22 @@
                 <h5 class="modal-title">Update Stock</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="stockForm" method="POST">
+            <form action="{{ route('items.updateStock', $item) }}" method="POST">
                 @csrf
                 @method('PATCH')
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Item</label>
-                        <input type="text" class="form-control" id="stockItemName" readonly>
+                        <input type="text" id="stockItemName" class="form-control" readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="current_stock" class="form-label">Current Stock</label>
-                        <input type="number" class="form-control" id="current_stock" readonly>
+                        <label class="form-label">Current Stock</label>
+                        <input type="text" id="currentStock" class="form-control" readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="stock_action" class="form-label">Action</label>
-                        <select class="form-select" id="stock_action" name="action">
-                            <option value="add">Add Stock</option>
-                            <option value="remove">Remove Stock</option>
-                            <option value="set">Set Stock</option>
-                        </select>
+                        <label class="form-label">New Stock Quantity</label>
+                        <input type="number" name="quantity" id="newStock" class="form-control" min="0" required>
                     </div>
-                    <div class="mb-3">
-                        <label for="quantity" class="form-label">Quantity</label>
-                        <input type="number" class="form-control" id="quantity" name="quantity" min="0" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="note" class="form-label">Note (Optional)</label>
-                        <input type="text" class="form-control" id="note" name="note" placeholder="Reason for stock change">
-                    </div>
-                    <div id="stock_preview" class="alert" style="display: none;"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -331,75 +391,13 @@
 </div>
 
 <script>
-function showStockModal(itemId, itemName, currentStock) {
+function showStockModal(itemId, itemName, currentQuantity) {
     document.getElementById('stockItemName').value = itemName;
-    document.getElementById('current_stock').value = currentStock;
-    document.getElementById('stockForm').action = `/items/${itemId}/update-stock`;
-    document.getElementById('quantity').value = '';
-    document.getElementById('note').value = '';
-    document.getElementById('stock_action').value = 'add';
-    
-    // Hide preview
-    const preview = document.getElementById('stock_preview');
-    preview.style.display = 'none';
+    document.getElementById('currentStock').value = currentQuantity + ' units';
+    document.getElementById('newStock').value = currentQuantity;
 
     const modal = new bootstrap.Modal(document.getElementById('stockModal'));
     modal.show();
 }
-
-function updateStockPreview() {
-    const action = document.getElementById('stock_action').value;
-    const quantity = parseInt(document.getElementById('quantity').value) || 0;
-    const currentStock = parseInt(document.getElementById('current_stock').value) || 0;
-    const preview = document.getElementById('stock_preview');
-
-    if (quantity === 0) {
-        preview.style.display = 'none';
-        return;
-    }
-
-    let newStock;
-    let actionText;
-
-    switch (action) {
-        case 'add':
-            newStock = currentStock + quantity;
-            actionText = `Adding ${quantity} units`;
-            break;
-        case 'remove':
-            newStock = Math.max(0, currentStock - quantity);
-            actionText = `Removing ${quantity} units`;
-            if (currentStock < quantity) {
-                actionText += ` (limited to available stock)`;
-            }
-            break;
-        case 'set':
-            newStock = quantity;
-            actionText = `Setting stock to ${quantity} units`;
-            break;
-    }
-
-    preview.innerHTML = `
-        <strong>${actionText}</strong><br>
-        Current Stock: ${currentStock} → New Stock: ${newStock}
-        ${newStock === 0 ? '<br><span class="text-danger">⚠️ This will result in zero stock</span>' : ''}
-        ${newStock < 10 && newStock > 0 ? '<br><span class="text-warning">⚠️ This will result in low stock</span>' : ''}
-    `;
-
-    preview.className = `alert ${newStock === 0 ? 'alert-danger' : (newStock < 10 ? 'alert-warning' : 'alert-success')}`;
-    preview.style.display = 'block';
-}
-
-// Add event listeners when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    const stockActionSelect = document.getElementById('stock_action');
-    const quantityInput = document.getElementById('quantity');
-
-    if (stockActionSelect && quantityInput) {
-        stockActionSelect.addEventListener('change', updateStockPreview);
-        quantityInput.addEventListener('input', updateStockPreview);
-    }
-});
 </script>
-
 @endsection

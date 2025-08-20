@@ -247,61 +247,134 @@
 
 <!-- Statistics Cards -->
 <div class="row mb-4">
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="card bg-primary text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h5 class="card-title">Total Items</h5>
-                        <h3>{{ $stats['total_items'] }}</h3>
+                        <h6 class="card-title">Total Items</h6>
+                        <h4>{{ $stats['total_items'] }}</h4>
                     </div>
                     <div class="align-self-center">
-                        <i class="bi bi-box-seam fs-1"></i>
+                        <i class="bi bi-box-seam fs-2"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="card bg-warning text-dark">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h5 class="card-title">Low Stock</h5>
-                        <h3>{{ $stats['low_stock'] }}</h3>
+                        <h6 class="card-title">Low Stock</h6>
+                        <h4>{{ $stats['low_stock'] }}</h4>
                     </div>
                     <div class="align-self-center">
-                        <i class="bi bi-exclamation-triangle fs-1"></i>
+                        <i class="bi bi-exclamation-triangle fs-2"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="card bg-danger text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h5 class="card-title">Out of Stock</h5>
-                        <h3>{{ $stats['out_of_stock'] }}</h3>
+                        <h6 class="card-title">Out of Stock</h6>
+                        <h4>{{ $stats['out_of_stock'] }}</h4>
                     </div>
                     <div class="align-self-center">
-                        <i class="bi bi-x-circle fs-1"></i>
+                        <i class="bi bi-x-circle fs-2"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="card bg-success text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h5 class="card-title">Total Value</h5>
-                        <h3>${{ number_format($stats['total_value'], 2) }}</h3>
+                        <h6 class="card-title">Inventory Value</h6>
+                        <h4>${{ number_format($stats['total_value'], 0) }}</h4>
                     </div>
                     <div class="align-self-center">
-                        <i class="bi bi-currency-dollar fs-1"></i>
+                        <i class="bi bi-currency-dollar fs-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Realized Profit</h6>
+                        <h4 class="{{ $stats['realized_profit'] >= 0 ? 'text-white' : 'text-warning' }}">
+                            ${{ number_format($stats['realized_profit'], 0) }}
+                        </h4>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-graph-up fs-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card bg-secondary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Unrealized Profit</h6>
+                        <h4 class="{{ $stats['unrealized_profit'] >= 0 ? 'text-white' : 'text-warning' }}">
+                            ${{ number_format($stats['unrealized_profit'], 0) }}
+                        </h4>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-graph-down fs-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Profit Analysis Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0"><i class="bi bi-analytics"></i> Profit Analysis Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="border-end">
+                            <h5 class="text-success">${{ number_format($stats['realized_profit'], 2) }}</h5>
+                            <small class="text-muted">Realized Profit<br><em>From actual sales</em></small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border-end">
+                            <h5 class="text-info">${{ number_format($stats['unrealized_profit'], 2) }}</h5>
+                            <small class="text-muted">Unrealized Profit<br><em>Potential from inventory</em></small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border-end">
+                            <h5 class="text-primary">${{ number_format($stats['realized_profit'] + $stats['unrealized_profit'], 2) }}</h5>
+                            <small class="text-muted">Total Profit Potential<br><em>Realized + Unrealized</em></small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <h5 class="text-warning">
+                            {{ $stats['total_value'] > 0 ? number_format(($stats['unrealized_profit'] / $stats['total_value']) * 100, 1) : 0 }}%
+                        </h5>
+                        <small class="text-muted">Profit Margin<br><em>On current inventory</em></small>
                     </div>
                 </div>
             </div>
@@ -486,7 +559,8 @@
                         </span>
                     </td>
                     <td class="text-end">
-                        <strong>${{ number_format($item->price * $item->quantity, 2) }}</strong>
+                        <strong>${{ number_format($item->primary_price * $item->quantity, 2) }}</strong>
+                        <br><small class="text-muted">{{ $item->quantity }} × ${{ number_format($item->primary_price, 2) }}</small>
                     </td>
                     <td>
                         <small class="text-muted">{{ $item->created_at->format('M d, Y') }}</small>
@@ -521,20 +595,19 @@
                                    title="Edit Item">
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-success"
-                                        title="Manage Pricing"
-                                        onclick="showPricingModal({{ $item->id }}, @json($item->name), {{ $item->price }}, {{ $item->base_price ?? 0 }}, {{ $item->operator_price ?? 0 }})">
+                                <a href="{{ route('items.pricing') }}?item={{ $item->id }}"
+                                   class="btn btn-sm btn-outline-success"
+                                   title="Manage Pricing">
                                     <i class="bi bi-currency-dollar"></i>
-                                </button>
+                                </a>
                                 <button type="button"
-                                        class="btn btn-sm btn-outline-secondary"
+                                        class="btn btn-sm btn-outline-warning"
                                         title="Quick Stock Update"
                                         onclick="showStockModal({{ $item->id }}, @json($item->name), {{ $item->quantity }})">
-                                    <i class="bi bi-box-arrow-up-right"></i>
+                                    <i class="bi bi-boxes"></i>
                                 </button>
                                 <form action="{{ route('items.destroy', $item) }}" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Soft delete ' + @json($item->name) + '?');">
+                                      onsubmit="return confirm('Delete ' + @json($item->name) + '? This can be restored later.');">
                                     @csrf
                                     @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger" title="Delete Item">

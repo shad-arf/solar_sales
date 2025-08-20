@@ -117,13 +117,54 @@ class ItemController extends Controller
             }
         ])->paginate($perPage);
 
-        // Calculate statistics
+        // Calculate comprehensive statistics with profit analysis
         $stats = [
             'total_items' => Item::count(),
             'low_stock' => Item::where('quantity', '>', 0)->where('quantity', '<', 10)->count(),
             'out_of_stock' => Item::where('quantity', 0)->count(),
-            'total_value' => Item::selectRaw('SUM(price * quantity) as total')->value('total') ?? 0
+            'total_value' => 0,
+            'realized_profit' => 0,
+            'unrealized_profit' => 0,
+            'total_cost' => 0,
         ];
+
+        // Calculate realized profit (from actual sales)
+        $realizedProfitQuery = DB::table('orders')
+            ->join('items', 'orders.item_id', '=', 'items.id')
+            ->leftJoin('purchase_items', function($join) {
+                $join->on('purchase_items.item_id', '=', 'orders.item_id');
+            })
+            ->leftJoin('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
+            ->selectRaw('
+                SUM(orders.quantity * orders.unit_price) as total_sales_value,
+                SUM(orders.quantity * COALESCE(purchase_items.purchase_price, items.price * 0.7)) as total_cost_value
+            ')
+            ->whereNull('orders.deleted_at')
+            ->first();
+
+        if ($realizedProfitQuery) {
+            $stats['realized_profit'] = ($realizedProfitQuery->total_sales_value ?? 0) - ($realizedProfitQuery->total_cost_value ?? 0);
+        }
+
+        // Calculate unrealized profit (current inventory value vs estimated cost)
+        $unrealizedQuery = DB::table('items')
+            ->leftJoin('purchase_items', 'purchase_items.item_id', '=', 'items.id')
+            ->selectRaw('
+                SUM(items.quantity * COALESCE(
+                    (SELECT price FROM item_prices WHERE item_id = items.id AND is_default = 1 AND is_active = 1 LIMIT 1),
+                    items.price
+                )) as inventory_selling_value,
+                SUM(items.quantity * COALESCE(purchase_items.purchase_price, items.price * 0.7)) as inventory_cost_value
+            ')
+            ->whereNull('items.deleted_at')
+            ->where('items.quantity', '>', 0)
+            ->first();
+
+        if ($unrealizedQuery) {
+            $stats['total_value'] = $unrealizedQuery->inventory_selling_value ?? 0;
+            $stats['total_cost'] = $unrealizedQuery->inventory_cost_value ?? 0;
+            $stats['unrealized_profit'] = $stats['total_value'] - $stats['total_cost'];
+        }
 
         return view('items.index', compact('items', 'stats'));
     }
