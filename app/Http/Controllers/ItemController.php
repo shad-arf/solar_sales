@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Item;
+use App\Models\ItemPrice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -49,25 +50,29 @@ class ItemController extends Controller
             }
         }
 
-        // Price range filters
+        // Price range filters - check both new pricing structure and legacy fields
         if ($request->filled('price_min')) {
-            $priceType = $request->get('price_type', 'regular');
-            $priceColumn = match($priceType) {
-                'base' => 'base_price',
-                'operator' => 'operator_price',
-                default => 'price'
-            };
-            $query->where($priceColumn, '>=', $request->price_min);
+            $priceMin = $request->price_min;
+            $query->where(function($q) use ($priceMin) {
+                // Check new pricing structure
+                $q->whereHas('itemPrices', function($priceQuery) use ($priceMin) {
+                    $priceQuery->where('is_active', true)->where('price', '>=', $priceMin);
+                })
+                // Fallback to legacy pricing
+                ->orWhere('price', '>=', $priceMin);
+            });
         }
 
         if ($request->filled('price_max')) {
-            $priceType = $request->get('price_type', 'regular');
-            $priceColumn = match($priceType) {
-                'base' => 'base_price',
-                'operator' => 'operator_price',
-                default => 'price'
-            };
-            $query->where($priceColumn, '<=', $request->price_max);
+            $priceMax = $request->price_max;
+            $query->where(function($q) use ($priceMax) {
+                // Check new pricing structure
+                $q->whereHas('itemPrices', function($priceQuery) use ($priceMax) {
+                    $priceQuery->where('is_active', true)->where('price', '<=', $priceMax);
+                })
+                // Fallback to legacy pricing
+                ->orWhere('price', '<=', $priceMax);
+            });
         }
 
         // Quantity range filters
@@ -97,9 +102,20 @@ class ItemController extends Controller
         // Secondary sort by ID for consistency
         $query->orderBy('id', 'asc');
 
-        // Pagination
+        // Pagination with optimized eager loading
         $perPage = $request->get('per_page', 15);
-        $items = $query->paginate($perPage);
+        $items = $query->with([
+            'activePrices',
+            'orderItems' => function($q) {
+                $q->select('id', 'item_id', 'sale_id', 'quantity', 'unit_price');
+            },
+            'orderItems.sale' => function($q) {
+                $q->select('id', 'customer_id', 'sale_date', 'total');
+            },
+            'orderItems.sale.customer' => function($q) {
+                $q->select('id', 'name')->withTrashed();
+            }
+        ])->paginate($perPage);
 
         // Calculate statistics
         $stats = [
@@ -187,10 +203,12 @@ class ItemController extends Controller
             $query->whereDate('created_at', '<=', $request->created_to);
         }
 
-        // Get all results for export
+        // Get all results for export with pricing
         $sortBy = $request->get('sort_by', 'name');
         $sortDirection = $request->get('sort_direction', 'asc');
-        $items = $query->orderBy($sortBy, $sortDirection)->get();
+        $items = $query->with(['itemPrices' => function($q) {
+            $q->where('is_active', true)->orderBy('sort_order');
+        }])->orderBy($sortBy, $sortDirection)->get();
 
         $filename = 'items_export_' . date('Y-m-d_H-i-s') . '.csv';
 
@@ -207,9 +225,8 @@ class ItemController extends Controller
                 'Code',
                 'Name',
                 'Description',
-                'Regular Price',
-                'Base Price',
-                'Operator Price',
+                'Primary Price',
+                'All Prices',
                 'Quantity',
                 'Stock Status',
                 'Total Value',
@@ -229,16 +246,21 @@ class ItemController extends Controller
                     $stockStatus = 'In Stock';
                 }
 
+                // Get pricing information
+                $primaryPrice = $item->primary_price;
+                $allPrices = $item->itemPrices->map(function($price) {
+                    return $price->name . ': $' . number_format($price->price, 2);
+                })->implode('; ') ?: 'Legacy: $' . number_format($item->price, 2);
+
                 fputcsv($file, [
                     $item->code,
                     $item->name,
                     $item->description ?? '',
-                    number_format($item->price, 2),
-                    number_format($item->base_price ?? 0, 2),
-                    number_format($item->operator_price ?? 0, 2),
+                    number_format($primaryPrice, 2),
+                    $allPrices,
                     $item->quantity,
                     $stockStatus,
-                    number_format($item->price * $item->quantity, 2),
+                    number_format($primaryPrice * $item->quantity, 2),
                     $item->created_at->format('Y-m-d'),
                     $item->trashed() ? 'Deleted' : 'Active'
                 ]);
@@ -332,6 +354,7 @@ class ItemController extends Controller
 
     public function edit(Item $item)
     {
+        $item->load('activePrices');
         return view('items.edit', compact('item'));
     }
 
@@ -341,30 +364,249 @@ class ItemController extends Controller
             'name'            => 'required|string|max:255',
             'code'            => 'required|string|max:255|unique:items,code',
             'description'     => 'nullable|string',
-            'price'           => 'nullable|numeric|min:0',
-            'base_price'      => 'nullable|numeric|min:0',
-            'operator_price'  => 'nullable|numeric|min:0',
-            'quantity'        => 'required|integer|min:0',
+            'pricing'         => 'required|array|min:1',
+            'pricing.*.unit_name' => 'required|string|max:100',
+            'pricing.*.unit_description' => 'nullable|string|max:255',
+            'pricing.*.price' => 'required|numeric|min:0',
+            'default_pricing' => 'required|integer|min:0'
         ]);
 
-        Item::create($validated);
-        return redirect()->route('items.index')->with('success', 'Item created successfully.');
+        DB::beginTransaction();
+        
+        try {
+            // Create the item first
+            $item = Item::create([
+                'name' => $validated['name'],
+                'code' => $validated['code'],
+                'description' => $validated['description'],
+                'quantity' => 0, // Default quantity to 0 for new items
+                // Keep legacy price field for backward compatibility
+                'price' => $validated['pricing'][$validated['default_pricing']]['price'] ?? 0,
+            ]);
+
+            // Create pricing records
+            foreach ($validated['pricing'] as $index => $priceData) {
+                ItemPrice::create([
+                    'item_id' => $item->id,
+                    'name' => $priceData['unit_name'],
+                    'price' => $priceData['price'],
+                    'unit' => $this->extractUnit($priceData['unit_name']),
+                    'description' => $priceData['unit_description'],
+                    'category_id' => null, // For future use
+                    'is_default' => $index == $validated['default_pricing'],
+                    'is_active' => true,
+                    'sort_order' => $index
+                ]);
+            }
+
+            // Also maintain backward compatibility by storing in legacy fields
+            $pricingData = $validated['pricing'];
+            $updateData = [];
+            
+            if (isset($pricingData[0])) {
+                $updateData['price'] = $pricingData[0]['price'];
+            }
+            if (isset($pricingData[1])) {
+                $updateData['base_price'] = $pricingData[1]['price'];
+            }
+            if (isset($pricingData[2])) {
+                $updateData['operator_price'] = $pricingData[2]['price'];
+            }
+            
+            if (!empty($updateData)) {
+                $item->update($updateData);
+            }
+
+            DB::commit();
+            
+            return redirect()->route('items.index')->with('success', "Item '{$item->name}' created successfully with " . count($validated['pricing']) . " pricing options.");
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Failed to create item: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    /**
+     * Extract unit from pricing name (e.g., "Per piece" -> "piece")
+     */
+    private function extractUnit($unitName)
+    {
+        $unitName = strtolower($unitName);
+        if (str_contains($unitName, 'per ')) {
+            return trim(str_replace('per ', '', $unitName));
+        }
+        if (str_contains($unitName, 'price')) {
+            return null; // No specific unit for general price
+        }
+        return $unitName;
     }
 
     public function update(Request $request, Item $item)
     {
-        $validated = $request->validate([
-            'name'            => 'required|string|max:255',
-            'code'            => 'required|string|max:255|unique:items,code,' . $item->id,
-            'description'     => 'nullable|string',
-            'price'           => 'nullable|numeric|min:0',
-            'base_price'      => 'nullable|numeric|min:0',
-            'operator_price'  => 'nullable|numeric|min:0',
-            'quantity'        => 'required|integer|min:0',
-        ]);
+        // Check if this is a multi-pricing update or traditional update
+        if ($request->has('pricing')) {
+            // Multi-pricing update from edit form
+            $validated = $request->validate([
+                'name'            => 'required|string|max:255',
+                'code'            => 'required|string|max:255|unique:items,code,' . $item->id,
+                'description'     => 'nullable|string',
+                'quantity'        => 'required|integer|min:0',
+                'pricing'         => 'required|array|min:1',
+                'pricing.*.unit_name' => 'required|string|max:100',
+                'pricing.*.unit_description' => 'nullable|string|max:255',
+                'pricing.*.price' => 'required|numeric|min:0',
+                'default_pricing' => 'required|integer|min:0'
+            ]);
 
-        $item->update($validated);
-        return redirect()->route('items.index')->with('success', 'Item updated successfully.');
+            DB::beginTransaction();
+            
+            try {
+                // Update item basic info
+                $item->update([
+                    'name' => $validated['name'],
+                    'code' => $validated['code'],
+                    'description' => $validated['description'],
+                    'quantity' => $validated['quantity'],
+                    // Keep legacy price field for backward compatibility
+                    'price' => $validated['pricing'][$validated['default_pricing']]['price'] ?? 0,
+                ]);
+
+                // Delete existing prices and create new ones
+                $item->prices()->delete();
+                
+                foreach ($validated['pricing'] as $index => $priceData) {
+                    ItemPrice::create([
+                        'item_id' => $item->id,
+                        'name' => $priceData['unit_name'],
+                        'price' => $priceData['price'],
+                        'unit' => $this->extractUnit($priceData['unit_name']),
+                        'description' => $priceData['unit_description'],
+                        'category_id' => null,
+                        'is_default' => $index == $validated['default_pricing'],
+                        'is_active' => true,
+                        'sort_order' => $index
+                    ]);
+                }
+
+                // Also maintain backward compatibility by storing in legacy fields
+                $pricingData = $validated['pricing'];
+                $updateData = [];
+                
+                if (isset($pricingData[0])) {
+                    $updateData['price'] = $pricingData[0]['price'];
+                }
+                if (isset($pricingData[1])) {
+                    $updateData['base_price'] = $pricingData[1]['price'];
+                }
+                if (isset($pricingData[2])) {
+                    $updateData['operator_price'] = $pricingData[2]['price'];
+                }
+                
+                if (!empty($updateData)) {
+                    $item->update($updateData);
+                }
+
+                DB::commit();
+                
+                return redirect()->route('items.index')->with('success', "Item '{$item->name}' updated successfully with " . count($validated['pricing']) . " pricing options.");
+                
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return back()->withErrors(['error' => 'Failed to update item: ' . $e->getMessage()])->withInput();
+            }
+            
+        } else {
+            // Traditional update or quick pricing update
+            $validated = $request->validate([
+                'name'            => 'sometimes|required|string|max:255',
+                'code'            => 'sometimes|required|string|max:255|unique:items,code,' . $item->id,
+                'description'     => 'nullable|string',
+                'price'           => 'nullable|numeric|min:0',
+                'base_price'      => 'nullable|numeric|min:0',
+                'operator_price'  => 'nullable|numeric|min:0',
+                'quantity'        => 'sometimes|required|integer|min:0',
+            ]);
+
+            DB::beginTransaction();
+            
+            try {
+                $item->update($validated);
+                
+                // If this is a pricing update, update the prices table too
+                if ($request->hasAny(['price', 'base_price', 'operator_price'])) {
+                    $this->updatePricingTable($item, $validated);
+                }
+                
+                DB::commit();
+                
+                // Check if this was a pricing-only update
+                if ($request->hasAny(['price', 'base_price', 'operator_price']) && !$request->has('name')) {
+                    return redirect()->route('items.index')->with('success', "Pricing updated for '{$item->name}' successfully.");
+                }
+                
+                return redirect()->route('items.index')->with('success', "Item '{$item->name}' updated successfully.");
+                
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return back()->withErrors(['error' => 'Failed to update item: ' . $e->getMessage()]);
+            }
+        }
+    }
+
+    /**
+     * Update pricing table based on legacy price fields
+     */
+    private function updatePricingTable(Item $item, array $validated)
+    {
+        $pricesToUpdate = [];
+        
+        if (isset($validated['price']) && $validated['price'] > 0) {
+            $pricesToUpdate[] = [
+                'name' => 'Regular Price',
+                'price' => $validated['price'],
+                'unit' => null,
+                'description' => 'Standard selling price',
+                'sort_order' => 0,
+                'is_default' => true
+            ];
+        }
+        
+        if (isset($validated['base_price']) && $validated['base_price'] > 0) {
+            $pricesToUpdate[] = [
+                'name' => 'Wholesale Price',
+                'price' => $validated['base_price'],
+                'unit' => null,
+                'description' => 'Bulk/wholesale pricing',
+                'sort_order' => 1,
+                'is_default' => false
+            ];
+        }
+        
+        if (isset($validated['operator_price']) && $validated['operator_price'] > 0) {
+            $pricesToUpdate[] = [
+                'name' => 'Operator Price',
+                'price' => $validated['operator_price'],
+                'unit' => null,
+                'description' => 'Special operator pricing',
+                'sort_order' => 2,
+                'is_default' => false
+            ];
+        }
+        
+        if (!empty($pricesToUpdate)) {
+            // Delete existing prices from this legacy update
+            $item->prices()->whereIn('name', ['Regular Price', 'Wholesale Price', 'Operator Price'])->delete();
+            
+            // Create new prices
+            foreach ($pricesToUpdate as $priceData) {
+                ItemPrice::create(array_merge($priceData, [
+                    'item_id' => $item->id,
+                    'category_id' => null,
+                    'is_active' => true
+                ]));
+            }
+        }
     }
 
     public function destroy(Item $item)
@@ -448,5 +690,64 @@ class ItemController extends Controller
                            ->get();
 
         return view('items.dashboard', compact('stats', 'topItems', 'recentItems', 'lowStockItems'));
+    }
+
+    /**
+     * Show pricing management page
+     */
+    public function pricing()
+    {
+        $items = Item::select('id', 'name', 'code')->orderBy('name')->get();
+        return view('items.pricing', compact('items'));
+    }
+
+    /**
+     * Store pricing data
+     */
+    public function pricingStore(Request $request)
+    {
+        $validated = $request->validate([
+            'item_id' => 'required|exists:items,id',
+            'unit' => 'required|string|max:100',
+            'price_types' => 'required|array|min:1',
+            'price_types.*.name' => 'required|string|max:100',
+            'price_types.*.price' => 'required|numeric|min:0',
+            'price_types.*.description' => 'nullable|string|max:255'
+        ]);
+
+        $item = Item::findOrFail($validated['item_id']);
+        
+        // Create a pricing data structure
+        $pricingData = [
+            'unit' => $validated['unit'],
+            'price_types' => $validated['price_types'],
+            'updated_at' => now()
+        ];
+
+        // Store in a JSON field or create a separate pricing table
+        // For now, we'll update the item with the first 3 prices in existing fields
+        $updateData = [];
+        
+        foreach ($validated['price_types'] as $index => $priceType) {
+            switch($index) {
+                case 0:
+                    $updateData['price'] = $priceType['price'];
+                    break;
+                case 1:
+                    $updateData['base_price'] = $priceType['price'];
+                    break;
+                case 2:
+                    $updateData['operator_price'] = $priceType['price'];
+                    break;
+            }
+        }
+
+        // If you want to store all pricing data, you could add a JSON field to items table
+        // $updateData['pricing_data'] = json_encode($pricingData);
+
+        $item->update($updateData);
+
+        return redirect()->route('items.pricing')
+            ->with('success', "Pricing updated for {$item->name}. Unit: {$validated['unit']}");
     }
 }

@@ -277,10 +277,14 @@ class SaleController extends Controller
      */
     public function create()
     {
-        $items       = Item::whereNull('deleted_at')->get();
-        $customers   = Customer::whereNull('deleted_at')->get();
-        // get the highest item id (i.e. the last one added)
-        $saleId  = Sale::whereNull('deleted_at')->max(column: 'id');
+        $items = Item::with(['itemPrices' => function($query) {
+            $query->where('is_active', true)->orderBy('sort_order');
+        }])->whereNull('deleted_at')->get();
+        
+        $customers = Customer::whereNull('deleted_at')->get();
+        
+        // Get the next sale ID
+        $saleId = Sale::whereNull('deleted_at')->max('id') + 1;
 
         return view('sales.create', compact('items', 'customers', 'saleId'));
     }
@@ -302,8 +306,8 @@ class SaleController extends Controller
         'item_id'           => 'required|array|min:1',
         'item_id.*'         => 'required|exists:items,id',
 
-        'price_type'        => 'required|array',
-        'price_type.*'      => 'required|in:regular,operator,base',
+        'price_id'          => 'required|array',
+        'price_id.*'        => 'required|exists:item_prices,id',
 
         'quantity'          => 'required|array',
         'quantity.*'        => 'required|integer|min:1',
@@ -334,26 +338,23 @@ class SaleController extends Controller
             $quantity   = $validated['quantity'][$i];
             $discount   = $validated['line_discount'][$i] ?? 0;
             $lineTotal  = $validated['line_total'][$i];
-            $priceType  = $validated['price_type'][$i];
+            $priceId    = $validated['price_id'][$i];
 
             $item = Item::findOrFail($itemId);
             if ($item->quantity < $quantity) {
                 throw new \Exception("Not enough stock for {$item->name}. Available: {$item->quantity}");
             }
 
-            // Determine unit price based on price type
-            $unitPrice = match($priceType) {
-                'operator' => $item->operator_price ?: $item->price,
-                'base' => $item->base_price ?: $item->price,
-                default => $item->price
-            };
+            // Get the selected price from the new pricing table
+            $itemPrice = \App\Models\ItemPrice::findOrFail($priceId);
+            $unitPrice = $itemPrice->price;
 
             Order::create([
                 'sale_id'       => $sale->id,
                 'item_id'       => $itemId,
                 'quantity'      => $quantity,
                 'unit_price'    => $unitPrice,
-                'price_type'    => $priceType,
+                'price_type'    => $itemPrice->name,
                 'line_discount' => $discount,
                 'line_total'    => $lineTotal,
             ]);
@@ -386,7 +387,10 @@ class SaleController extends Controller
      */
     public function edit(Sale $sale)
     {
-        $items     = Item::whereNull('deleted_at')->get();
+        $items = Item::with(['itemPrices' => function($query) {
+            $query->where('is_active', true)->orderBy('sort_order');
+        }])->whereNull('deleted_at')->get();
+        
         $customers = Customer::whereNull('deleted_at')->get();
         $payments  = Payment::where('sale_id', $sale->id)->latest()->get();
 
@@ -409,8 +413,8 @@ class SaleController extends Controller
             'item_id'         => 'required|array|min:1',
             'item_id.*'       => 'required|exists:items,id',
 
-            'price_type'      => 'required|array',
-            'price_type.*'    => 'required|in:regular,operator,base',
+            'price_id'        => 'required|array',
+            'price_id.*'      => 'required|exists:item_prices,id',
 
             'quantity'        => 'required|array',
             'quantity.*'      => 'required|integer|min:1',
@@ -471,17 +475,14 @@ class SaleController extends Controller
             $subtotal = 0;
 
             foreach ($validated['item_id'] as $i => $itemId) {
-                $qty  = $validated['quantity'][$i];
-                $disc = $validated['line_discount'][$i] ?? 0;
-                $type = $validated['price_type'][$i];
-                $item = Item::findOrFail($itemId);
+                $qty     = $validated['quantity'][$i];
+                $disc    = $validated['line_discount'][$i] ?? 0;
+                $priceId = $validated['price_id'][$i];
+                $item    = Item::findOrFail($itemId);
 
-                // choose correct unit price
-                $unit = match ($type) {
-                    'operator' => $item->operator_price,
-                    'base'     => $item->base_price,
-                    default    => $item->price,
-                };
+                // Get the selected price from the new pricing table
+                $itemPrice = \App\Models\ItemPrice::findOrFail($priceId);
+                $unit = $itemPrice->price;
 
                 // trust client-side calculation for line total
                 $lineTotal = round($validated['line_total'][$i], 2);
@@ -492,7 +493,7 @@ class SaleController extends Controller
                     'item_id'       => $itemId,
                     'quantity'      => $qty,
                     'unit_price'    => $unit,
-                    'price_type'    => $type,
+                    'price_type'    => $itemPrice->name,
                     'line_discount' => $disc,
                     'line_total'    => $lineTotal,
                 ]);
