@@ -839,14 +839,13 @@
     new Chart(document.getElementById('businessWorthChart'), {
         type: 'pie',
         data: {
-            labels: ['Inventory', 'Cash from Operations', 'Owner Investment'],
+            labels: ['Inventory', 'Cash from Operations'],
             datasets: [{
                 data: [
                     {{ $businessWorth['assets']['inventory'] }},
-                    {{ $businessWorth['assets']['cash_from_operations'] }},
-                    {{ $businessWorth['assets']['owner_investment'] }}
+                    {{ $businessWorth['assets']['cash_from_operations'] }}
                 ],
-                backgroundColor: ['#17a2b8', '#28a745', '#6f42c1'],
+                backgroundColor: ['#17a2b8', '#28a745'],
                 borderWidth: 2,
                 borderColor: '#fff'
             }]

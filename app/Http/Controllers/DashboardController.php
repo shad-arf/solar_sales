@@ -244,10 +244,9 @@ class DashboardController extends Controller
         $netProfit = $totalIncome - $totalExpenses;
         
         // Total business worth = Total Assets - Total Liabilities
-        // Assets: Cash + Inventory + Owner Capital
-        // Note: If inventory is lost, it will show as $0 in inventory account, 
-        // but the expense will be recorded in Cost of Goods Sold, reducing net worth
-        $totalAssets = $cashBalance + $inventoryValue + $ownerEquityBalance;
+        // Assets: Cash + Inventory (tangible assets only)
+        // Note: Owner equity is NOT an asset - it's the difference between assets and liabilities
+        $totalAssets = $cashBalance + $inventoryValue;
         
         // Get expense from Cost of Goods Sold account (includes inventory losses)
         $cogsAccount = Account::where('code', '5000')->first();
@@ -360,11 +359,10 @@ class DashboardController extends Controller
             $ownerEquityBalance = OwnerEquity::getNetEquity();
         }
         
-        // Assets
+        // Assets (tangible business assets only)
         $assets = [
             'inventory' => $inventoryValue,
-            'cash_from_operations' => $cashBalance,
-            'owner_investment' => $ownerEquityBalance
+            'cash_from_operations' => $cashBalance
         ];
         
         // Liabilities (minimal for now)
