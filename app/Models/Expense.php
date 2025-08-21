@@ -49,11 +49,11 @@ class Expense extends Model
 
     public static function getTotalThisMonth()
     {
-        return self::thisMonth()->sum('amount');
+        return self::thisMonth()->sum('amount') ?: 0;
     }
 
     public static function getTotalThisYear()
     {
-        return self::thisYear()->sum('amount');
+        return self::thisYear()->sum('amount') ?: 0;
     }
 }

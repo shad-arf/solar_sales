@@ -15,6 +15,11 @@
         <h5 class="mb-0">Adjustment Information</h5>
     </div>
     <div class="card-body">
+        <div class="alert alert-info">
+            <h6><i class="bi bi-info-circle"></i> Accounting Impact Notice</h6>
+            <p class="mb-0">Inventory adjustments automatically update accounting records. Lost/damaged items decrease inventory value and create expense entries. Your net worth will reflect these changes immediately.</p>
+        </div>
+        
         <form action="{{ route('inventory-adjustments.store') }}" method="POST">
             @csrf
 

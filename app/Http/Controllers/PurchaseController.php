@@ -6,6 +6,9 @@ use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\Supplier;
 use App\Models\Item;
+use App\Models\Expense;
+use App\Models\Account;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -272,10 +275,114 @@ class PurchaseController extends Controller
                            ->with('error', 'Only pending purchases can be completed.');
         }
 
-        $purchase->update(['status' => 'completed']);
+        DB::beginTransaction();
+        
+        try {
+            // Update purchase status
+            $purchase->update(['status' => 'completed']);
+            
+            // Create accounting entries
+            $this->createAccountingEntries($purchase);
+            
+            DB::commit();
 
-        return redirect()->route('purchases.show', $purchase)
-                       ->with('success', "Purchase order {$purchase->purchase_number} marked as completed.");
+            return redirect()->route('purchases.show', $purchase)
+                           ->with('success', "Purchase order {$purchase->purchase_number} marked as completed and accounting entries created.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Failed to complete purchase: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Create accounting entries for completed purchase
+     */
+    private function createAccountingEntries(Purchase $purchase)
+    {
+        // Get Cash and Inventory accounts
+        $cashAccount = Account::where('code', '1000')->first();
+        $inventoryAccount = Account::where('code', '1200')->first();
+        
+        if (!$cashAccount || !$inventoryAccount) {
+            throw new \Exception('Required accounts (Cash or Inventory) not found. Please run database seeders.');
+        }
+
+        $totalAmount = $purchase->total_amount;
+        $referenceNumber = "PUR-{$purchase->purchase_number}";
+        $description = "Purchase from {$purchase->supplier->name} - {$purchase->purchase_number}";
+
+        // Credit Cash (decrease cash)
+        Transaction::create([
+            'account_id' => $cashAccount->id,
+            'description' => $description,
+            'debit_amount' => 0,
+            'credit_amount' => $totalAmount,
+            'transaction_date' => $purchase->purchase_date,
+            'reference_number' => $referenceNumber,
+            'transaction_type' => 'purchase'
+        ]);
+
+        // Debit Inventory (increase inventory)
+        Transaction::create([
+            'account_id' => $inventoryAccount->id,
+            'description' => $description,
+            'debit_amount' => $totalAmount,
+            'credit_amount' => 0,
+            'transaction_date' => $purchase->purchase_date,
+            'reference_number' => $referenceNumber,
+            'transaction_type' => 'purchase'
+        ]);
+
+        // Initialize inventory account balance if this is the first transaction
+        $this->initializeInventoryAccountBalance();
+    }
+
+    /**
+     * Initialize inventory account balance to match actual item values
+     */
+    private function initializeInventoryAccountBalance()
+    {
+        $inventoryAccount = Account::where('code', '1200')->first();
+        if (!$inventoryAccount) return;
+
+        // Calculate current inventory value from items
+        $actualInventoryValue = Item::sum(DB::raw('quantity * COALESCE(price, 0)')) ?: 0;
+        
+        // Get current account balance
+        $accountBalance = $inventoryAccount->balance;
+        
+        // If there's a significant discrepancy, create an adjustment entry
+        $difference = $actualInventoryValue - $accountBalance;
+        
+        if (abs($difference) > 0.01) { // Only adjust if difference is more than 1 cent
+            $referenceNumber = "INIT-INV-" . date('Ymd');
+            $description = "Inventory account initialization - align with actual item values";
+            
+            if ($difference > 0) {
+                // Need to increase inventory account balance
+                Transaction::create([
+                    'account_id' => $inventoryAccount->id,
+                    'description' => $description,
+                    'debit_amount' => $difference,
+                    'credit_amount' => 0,
+                    'transaction_date' => now(),
+                    'reference_number' => $referenceNumber,
+                    'transaction_type' => 'other'
+                ]);
+            } else {
+                // Need to decrease inventory account balance
+                Transaction::create([
+                    'account_id' => $inventoryAccount->id,
+                    'description' => $description,
+                    'debit_amount' => 0,
+                    'credit_amount' => abs($difference),
+                    'transaction_date' => now(),
+                    'reference_number' => $referenceNumber,
+                    'transaction_type' => 'other'
+                ]);
+            }
+        }
     }
 
     /**

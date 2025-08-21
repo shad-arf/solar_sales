@@ -10,6 +10,8 @@ use App\Models\Expense;
 use App\Models\OwnerEquity;
 use App\Models\ItemSale;
 use App\Models\InventoryAdjustment;
+use App\Models\Account;
+use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,16 +46,35 @@ class DashboardController extends Controller
         $totalExpenses = Expense::getTotalThisMonth();
         $netIncome = $totalRevenue - $totalExpenses;
         
-        // Calculate inventory value as assets
-        $inventoryValue = Item::sum(DB::raw('quantity * COALESCE(price, 0)')) ?: 0;
-        $ownerEquity = OwnerEquity::getNetEquity();
-        $totalAssets = $inventoryValue + $ownerEquity;
+        // Get proper cash balance from accounting system
+        $cashAccount = Account::where('code', '1000')->first();
+        $cashBalance = $cashAccount ? $cashAccount->balance : 0;
+        
+        // Calculate actual inventory value from current items
+        $actualInventoryValue = Item::sum(DB::raw('quantity * COALESCE(price, 0)')) ?: 0;
+        
+        // Get inventory account balance for comparison
+        $inventoryAccount = Account::where('code', '1200')->first();
+        $accountingInventoryValue = $inventoryAccount ? $inventoryAccount->balance : 0;
+        
+        // Use actual inventory value (based on current item quantities and prices)
+        // This ensures we show correct value even if accounting isn't fully initialized
+        $inventoryValue = $actualInventoryValue;
+        
+        // If no accounting data, fallback to old calculation for cash
+        if (!$cashAccount) {
+            $cashBalance = max(0, $totalRevenue - $totalExpenses);
+        }
+        
+        $totalAssets = $inventoryValue + $cashBalance;
 
         return [
             'total_revenue' => $totalRevenue,
             'total_expenses' => $totalExpenses,
             'net_income' => $netIncome,
-            'total_assets' => $totalAssets
+            'total_assets' => $totalAssets,
+            'cash_balance' => $cashBalance,
+            'inventory_value' => $inventoryValue
         ];
     }
 
@@ -88,22 +109,40 @@ class DashboardController extends Controller
 
     private function getBalanceSheet()
     {
-        // Simple balance sheet with basic business items
+        // Get cash from accounting system
+        $cashAccount = Account::where('code', '1000')->first();
+        $cashBalance = $cashAccount ? $cashAccount->balance : 0;
+        
+        // Always calculate inventory value from actual items (more reliable)
         $inventoryValue = Item::sum(DB::raw('quantity * COALESCE(price, 0)')) ?: 0;
-        $cashOnHand = Income::getTotalThisYear() - Expense::getTotalThisYear();
+        
+        // Fallback if accounting system not set up for cash
+        if (!$cashAccount) {
+            $cashBalance = max(0, Income::getTotalThisYear() - Expense::getTotalThisYear());
+        }
         
         $assets = collect([
-            ['name' => 'Cash', 'balance' => max(0, $cashOnHand)],
+            ['name' => 'Cash', 'balance' => $cashBalance],
             ['name' => 'Inventory', 'balance' => $inventoryValue],
         ]);
 
+        // Get liabilities from accounting system
+        $accountsPayableAccount = Account::where('code', '2000')->first();
+        $accountsPayableBalance = $accountsPayableAccount ? $accountsPayableAccount->balance : 0;
+        
         $liabilities = collect([
-            ['name' => 'Accounts Payable', 'balance' => 0], // Can be manually entered later
+            ['name' => 'Accounts Payable', 'balance' => $accountsPayableBalance],
         ]);
 
-        $ownerEquity = OwnerEquity::getNetEquity();
+        // Get equity from accounting system
+        $ownerCapitalAccount = Account::where('code', '3000')->first();
+        $ownerCapitalBalance = $ownerCapitalAccount ? $ownerCapitalAccount->balance : 0;
+        
+        // Use accounting balance if available, otherwise fallback to OwnerEquity model
+        $ownerEquityBalance = $ownerCapitalBalance > 0 ? $ownerCapitalBalance : OwnerEquity::getNetEquity();
+        
         $equity = collect([
-            ['name' => 'Owner Equity', 'balance' => $ownerEquity],
+            ['name' => 'Owner Capital', 'balance' => $ownerEquityBalance],
         ]);
 
         $totalAssets = $assets->sum('balance');
@@ -175,24 +214,55 @@ class DashboardController extends Controller
 
     private function getBusinessSummary()
     {
-        // Calculate total business worth
+        // Get values from accounting system
+        $cashAccount = Account::where('code', '1000')->first();
+        $ownerCapitalAccount = Account::where('code', '3000')->first();
+        
+        $cashBalance = $cashAccount ? $cashAccount->balance : 0;
+        $ownerCapitalBalance = $ownerCapitalAccount ? $ownerCapitalAccount->balance : 0;
+        
+        // Always calculate inventory value from actual items (most accurate)
         $inventoryValue = Item::sum(DB::raw('quantity * COALESCE(price, 0)')) ?: 0;
-        $totalIncome = Income::getTotalThisYear();
-        $totalExpenses = Expense::getTotalThisYear();
-        $ownerInvestment = OwnerEquity::getTotalInvestments();
-        $ownerDrawings = OwnerEquity::getTotalDrawings();
+        
+        // Fallback calculations if cash accounting not set up
+        if (!$cashAccount) {
+            $totalIncome = Income::getTotalThisYear();
+            $totalExpenses = Expense::getTotalThisYear();
+            $cashBalance = max(0, $totalIncome - $totalExpenses);
+        }
+        
+        // Use accounting system for owner equity if available
+        if ($ownerCapitalAccount && $ownerCapitalBalance > 0) {
+            $ownerEquityBalance = $ownerCapitalBalance;
+        } else {
+            $ownerEquityBalance = OwnerEquity::getNetEquity();
+        }
         
         // Net profit from operations
+        $totalIncome = Income::getTotalThisYear();
+        $totalExpenses = Expense::getTotalThisYear();
         $netProfit = $totalIncome - $totalExpenses;
         
-        // Total business worth = inventory + cash from operations + owner investment - drawings
-        $businessWorth = $inventoryValue + $netProfit + $ownerInvestment - $ownerDrawings;
+        // Total business worth = Total Assets - Total Liabilities
+        // Assets: Cash + Inventory + Owner Capital
+        // Note: If inventory is lost, it will show as $0 in inventory account, 
+        // but the expense will be recorded in Cost of Goods Sold, reducing net worth
+        $totalAssets = $cashBalance + $inventoryValue + $ownerEquityBalance;
+        
+        // Get expense from Cost of Goods Sold account (includes inventory losses)
+        $cogsAccount = Account::where('code', '5000')->first();
+        $inventoryLossExpense = $cogsAccount ? $cogsAccount->balance : 0;
+        
+        // Business worth = Assets - Expenses (including inventory losses)
+        $businessWorth = $totalAssets - $inventoryLossExpense;
         
         return [
             'business_worth' => $businessWorth,
             'inventory_value' => $inventoryValue,
+            'cash_balance' => $cashBalance,
             'net_profit' => $netProfit,
-            'owner_equity' => OwnerEquity::getNetEquity()
+            'owner_equity' => $ownerEquityBalance,
+            'inventory_loss_expense' => $inventoryLossExpense
         ];
     }
 
@@ -202,7 +272,10 @@ class DashboardController extends Controller
         $totalQuantity = Item::sum('quantity') ?: 0;
         $lowStockItems = Item::where('quantity', '<=', 10)->count();
         $outOfStockItems = Item::where('quantity', 0)->count();
+        
+        // Always use actual item calculations for inventory value (most reliable)
         $totalValue = Item::sum(DB::raw('quantity * COALESCE(price, 0)')) ?: 0;
+        
         $averageItemValue = $totalQuantity > 0 ? $totalValue / $totalQuantity : 0;
 
         return [
@@ -263,22 +336,40 @@ class DashboardController extends Controller
 
     private function getBusinessWorth()
     {
+        // Get values from accounting system
+        $cashAccount = Account::where('code', '1000')->first();
+        $ownerCapitalAccount = Account::where('code', '3000')->first();
+        
+        $cashBalance = $cashAccount ? $cashAccount->balance : 0;
+        $ownerCapitalBalance = $ownerCapitalAccount ? $ownerCapitalAccount->balance : 0;
+        
+        // Always calculate inventory from actual items
         $inventoryValue = Item::sum(DB::raw('quantity * COALESCE(price, 0)')) ?: 0;
-        $totalIncome = Income::getTotalThisYear();
-        $totalExpenses = Expense::getTotalThisYear();
-        $ownerInvestment = OwnerEquity::getTotalInvestments();
-        $ownerDrawings = OwnerEquity::getTotalDrawings();
+        
+        // Fallback if cash accounting not available
+        if (!$cashAccount) {
+            $totalIncome = Income::getTotalThisYear();
+            $totalExpenses = Expense::getTotalThisYear();
+            $cashBalance = max(0, $totalIncome - $totalExpenses);
+        }
+        
+        // Use accounting system for owner equity if available
+        if ($ownerCapitalAccount && $ownerCapitalBalance > 0) {
+            $ownerEquityBalance = $ownerCapitalBalance;
+        } else {
+            $ownerEquityBalance = OwnerEquity::getNetEquity();
+        }
         
         // Assets
         $assets = [
             'inventory' => $inventoryValue,
-            'cash_from_operations' => $totalIncome - $totalExpenses,
-            'owner_investment' => $ownerInvestment
+            'cash_from_operations' => $cashBalance,
+            'owner_investment' => $ownerEquityBalance
         ];
         
-        // Liabilities
+        // Liabilities (minimal for now)
         $liabilities = [
-            'owner_drawings' => $ownerDrawings
+            'accounts_payable' => 0 // Can be expanded later
         ];
         
         $totalAssets = array_sum($assets);
@@ -425,9 +516,92 @@ class DashboardController extends Controller
             'reference_number' => 'nullable|string|max:50'
         ]);
 
-        OwnerEquity::create($request->all());
+        DB::beginTransaction();
+        
+        try {
+            // Create owner equity record
+            $ownerEquity = OwnerEquity::create($request->all());
+            
+            // Create accounting entries
+            $this->createOwnerEquityAccountingEntries($ownerEquity);
+            
+            DB::commit();
 
-        return redirect()->route('dashboard')
-            ->with('success', 'Owner equity transaction added successfully!');
+            return redirect()->route('dashboard')
+                ->with('success', 'Owner equity transaction added successfully and accounting entries created!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Failed to create owner equity transaction: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    /**
+     * Create accounting entries for owner equity transactions
+     */
+    private function createOwnerEquityAccountingEntries(OwnerEquity $ownerEquity)
+    {
+        // Get required accounts
+        $cashAccount = Account::where('code', '1000')->first(); // Cash
+        $ownerCapitalAccount = Account::where('code', '3000')->first(); // Owner Capital
+        
+        if (!$cashAccount || !$ownerCapitalAccount) {
+            throw new \Exception('Required accounts (Cash or Owner Capital) not found. Please run database seeders.');
+        }
+
+        $amount = $ownerEquity->amount;
+        $referenceNumber = "OE-{$ownerEquity->id}-" . strtoupper($ownerEquity->type);
+        $description = "Owner {$ownerEquity->type}: {$ownerEquity->description}";
+
+        if ($ownerEquity->type === 'investment') {
+            // Owner Investment: Increase Cash (Debit) and Increase Owner Capital (Credit)
+            
+            // Debit Cash (increase cash)
+            Transaction::create([
+                'account_id' => $cashAccount->id,
+                'description' => $description,
+                'debit_amount' => $amount,
+                'credit_amount' => 0,
+                'transaction_date' => $ownerEquity->transaction_date,
+                'reference_number' => $referenceNumber,
+                'transaction_type' => 'owner_investment'
+            ]);
+
+            // Credit Owner Capital (increase equity)
+            Transaction::create([
+                'account_id' => $ownerCapitalAccount->id,
+                'description' => $description,
+                'debit_amount' => 0,
+                'credit_amount' => $amount,
+                'transaction_date' => $ownerEquity->transaction_date,
+                'reference_number' => $referenceNumber,
+                'transaction_type' => 'owner_investment'
+            ]);
+
+        } else { // drawing
+            // Owner Drawing: Decrease Cash (Credit) and Decrease Owner Capital (Debit)
+            
+            // Credit Cash (decrease cash)
+            Transaction::create([
+                'account_id' => $cashAccount->id,
+                'description' => $description,
+                'debit_amount' => 0,
+                'credit_amount' => $amount,
+                'transaction_date' => $ownerEquity->transaction_date,
+                'reference_number' => $referenceNumber,
+                'transaction_type' => 'owner_drawing'
+            ]);
+
+            // Debit Owner Capital (decrease equity)
+            Transaction::create([
+                'account_id' => $ownerCapitalAccount->id,
+                'description' => $description,
+                'debit_amount' => $amount,
+                'credit_amount' => 0,
+                'transaction_date' => $ownerEquity->transaction_date,
+                'reference_number' => $referenceNumber,
+                'transaction_type' => 'owner_drawing'
+            ]);
+        }
     }
 }

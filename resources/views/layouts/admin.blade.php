@@ -124,6 +124,48 @@
             padding: 20px;
             min-height: calc(100vh - 70px);
         }
+
+        /* Mobile improvements */
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 15px;
+            }
+            
+            #sidebar {
+                width: 280px;
+                left: -280px;
+            }
+            
+            .sidebar-menu li a {
+                padding: 12px 15px;
+                font-size: 14px;
+            }
+            
+            .sidebar-menu li a small {
+                font-size: 10px;
+                display: block;
+                margin-top: 2px;
+            }
+        }
+
+        /* Better active state styling */
+        #sidebar .sidebar-menu li a.active {
+            background: linear-gradient(90deg, #495057 0%, #6c757d 100%);
+            border-left: 3px solid #007bff;
+            color: #fff;
+            font-weight: 500;
+        }
+
+        /* Improve text visibility */
+        .text-warning {
+            color: #ffc107 !important;
+        }
+
+        /* Loading state for links */
+        .sidebar-menu li a:active {
+            background: #6c757d;
+            transform: translateX(2px);
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -140,7 +182,8 @@
                 <i class="bi bi-person-circle me-2"></i>{{ auth()->check() ? auth()->user()->name : 'Guest' }}
             </a>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Profile</a></li>
+                <li><a class="dropdown-item" href="{{ route('dashboard') }}"><i class="bi bi-person me-2"></i>Profile</a></li>
+                <li><a class="dropdown-item" href="{{ route('dashboard') }}"><i class="bi bi-gear me-2"></i>Settings</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
                 <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
@@ -168,7 +211,7 @@
                 <span>Inventory Management</span>
             </li>
             <li>
-                <a href="{{ route('items.index') }}" class="{{ request()->is('items') && !request()->is('items/create') && !request()->is('items/pricing') ? 'active' : '' }}">
+                <a href="{{ route('items.index') }}" class="{{ request()->is('items') && !request()->is('items/create') && !request()->is('items/status/*') ? 'active' : '' }}">
                     <i class="bi bi-box"></i>All Items
                 </a>
             </li>
@@ -204,7 +247,7 @@
                 </a>
             </li>
             <li>
-                <a href="{{ route('purchases.index') }}" class="{{ request()->is('purchases') && !request()->is('purchases/create') ? 'active' : '' }}">
+                <a href="{{ route('purchases.index') }}" class="{{ request()->is('purchases') && !request()->is('purchases/create') && !request()->is('purchases/*/edit') ? 'active' : '' }}">
                     <i class="bi bi-cart-plus"></i>All Purchases
                 </a>
             </li>
@@ -219,13 +262,15 @@
                 <span>Sales Management</span>
             </li>
             <li>
-                <a href="#" class="">
+                <a href="{{ Route::has('customers.index') ? route('customers.index') : '#' }}" class="{{ request()->is('customers*') ? 'active' : '' }}">
                     <i class="bi bi-people"></i>Customers
+                    @if(!Route::has('customers.index'))<small class="text-warning ms-1">(Coming Soon)</small>@endif
                 </a>
             </li>
             <li>
-                <a href="#" class="">
+                <a href="{{ Route::has('sales.index') ? route('sales.index') : '#' }}" class="{{ request()->is('sales*') ? 'active' : '' }}">
                     <i class="bi bi-graph-up"></i>Sales
+                    @if(!Route::has('sales.index'))<small class="text-warning ms-1">(Coming Soon)</small>@endif
                 </a>
             </li>
 
@@ -234,7 +279,7 @@
                 <span>Financial Management</span>
             </li>
             <li>
-                <a href="{{ route('income.index') }}" class="{{ request()->is('income') && !request()->is('income/create') ? 'active' : '' }}">
+                <a href="{{ route('income.index') }}" class="{{ request()->is('income*') && !request()->is('income/create') ? 'active' : '' }}">
                     <i class="bi bi-cash-stack"></i>All Income
                 </a>
             </li>
@@ -244,13 +289,18 @@
                 </a>
             </li>
             <li>
-                <a href="{{ route('expenses.index') }}" class="{{ request()->is('expenses') && !request()->is('expenses/create') ? 'active' : '' }}">
+                <a href="{{ route('expenses.index') }}" class="{{ request()->is('expenses*') && !request()->is('expenses/create') ? 'active' : '' }}">
                     <i class="bi bi-receipt"></i>All Expenses
                 </a>
             </li>
             <li>
                 <a href="{{ route('expenses.create') }}" class="{{ request()->is('expenses/create') ? 'active' : '' }}">
                     <i class="bi bi-plus-circle"></i>Add Expense
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('transactions.index') }}" class="{{ request()->is('transactions*') ? 'active' : '' }}">
+                    <i class="bi bi-arrow-left-right"></i>All Transactions
                 </a>
             </li>
 
@@ -275,34 +325,45 @@
                 <span>Administration</span>
             </li>
             <li>
-                <a href="#" class="">
+                <a href="{{ Route::has('users.index') ? route('users.index') : '#' }}" class="{{ request()->is('users*') ? 'active' : '' }}">
                     <i class="bi bi-person-gear"></i>User Management
+                    @if(!Route::has('users.index'))<small class="text-warning ms-1">(Coming Soon)</small>@endif
                 </a>
             </li>
             @endif
 
             <!-- Reports & Export -->
             <li class="menu-header">
-                <span>Reports & Export</span>
+                <span>Reports & Analytics</span>
             </li>
             <li>
-                <a href="#" class="">
+                <a href="{{ route('dashboard') }}#financial-statements" class="{{ request()->is('reports/financial*') ? 'active' : '' }}">
                     <i class="bi bi-file-earmark-text"></i>Financial Report
                 </a>
             </li>
             <li>
-                <a href="#" class="">
-                    <i class="bi bi-download"></i>Export Income
+                <a href="{{ route('dashboard') }}#balance-sheet" class="{{ request()->is('reports/balance-sheet*') ? 'active' : '' }}">
+                    <i class="bi bi-pie-chart"></i>Balance Sheet
                 </a>
             </li>
             <li>
-                <a href="#" class="">
-                    <i class="bi bi-download"></i>Export Expenses
+                <a href="{{ route('dashboard') }}#income-statement" class="{{ request()->is('reports/income*') ? 'active' : '' }}">
+                    <i class="bi bi-graph-up"></i>Income Statement
+                </a>
+            </li>
+            
+            <!-- Quick Actions -->
+            <li class="menu-header">
+                <span>Quick Actions</span>
+            </li>
+            <li>
+                <a href="#" onclick="window.print()" class="">
+                    <i class="bi bi-printer"></i>Print Current Page
                 </a>
             </li>
             <li>
-                <a href="#" class="">
-                    <i class="bi bi-download"></i>Export Items
+                <a href="{{ route('dashboard') }}" class="">
+                    <i class="bi bi-arrow-clockwise"></i>Refresh Dashboard
                 </a>
             </li>
         </ul>

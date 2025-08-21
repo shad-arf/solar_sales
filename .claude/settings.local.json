@@ -4,7 +4,8 @@
       "Bash(php artisan:*)",
       "Bash(ls:*)",
       "Bash(find:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(./artisan test)"
     ],
     "deny": []
   }

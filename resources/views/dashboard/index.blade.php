@@ -6,7 +6,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Dashboard</h2>
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ownerEquityModal">
-            <i class="bi bi-plus-circle"></i> Add Owner Transaction
+            <i class="bi bi-plus-circle"></i> Add Owner Investment/Drawing
         </button>
     </div>
 
@@ -21,7 +21,7 @@
                                 <i class="bi bi-building me-2"></i>Total Business Worth
                             </h3>
                             <h1 class="display-4 mb-0">${{ number_format($businessSummary['business_worth'], 2) }}</h1>
-                            <p class="mb-0 opacity-75">Your complete solar business valuation</p>
+                            <p class="mb-0 opacity-75">Real-time tracking: Owner investments increase cash & net worth automatically</p>
                         </div>
                         <div class="col-md-3 text-center">
                             <h4 class="mb-1">${{ number_format($actualProfitLoss['actual_profit'], 2) }}</h4>
@@ -38,7 +38,10 @@
                             <hr class="my-2 opacity-50">
                             <div class="small">
                                 <div>This Month: ${{ number_format($actualProfitLoss['monthly_actual_profit'], 2) }}</div>
-                                <div>Inventory: ${{ number_format($businessSummary['inventory_value'], 2) }}</div>
+                                <div>Cash: ${{ number_format($businessSummary['cash_balance'] ?? 0, 2) }}</div>
+                                @if(isset($businessSummary['inventory_loss_expense']) && $businessSummary['inventory_loss_expense'] > 0)
+                                <div class="text-warning">Loss: ${{ number_format($businessSummary['inventory_loss_expense'], 2) }}</div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -49,6 +52,15 @@
 
     <!-- Key Metrics Cards -->
     <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <i class="bi bi-wallet2 fs-2"></i>
+                    <h4>${{ number_format($financialSummary['cash_balance'] ?? 0, 2) }}</h4>
+                    <small>Cash Balance</small>
+                </div>
+            </div>
+        </div>
         <div class="col-md-2">
             <div class="card bg-success text-white">
                 <div class="card-body text-center">
@@ -86,20 +98,33 @@
             </div>
         </div>
         <div class="col-md-2">
-            <div class="card bg-secondary text-white">
-                <div class="card-body text-center">
-                    <i class="bi bi-cart fs-2"></i>
-                    <h4>{{ $purchaseStats['purchase_count'] }}</h4>
-                    <small>Total Purchases</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
             <div class="card bg-dark text-white">
                 <div class="card-body text-center">
                     <i class="bi bi-person-circle fs-2"></i>
                     <h4>${{ number_format($ownerEquity['net_equity'], 2) }}</h4>
                     <small>Owner Equity</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Metrics Row -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-secondary text-white">
+                <div class="card-body text-center">
+                    <i class="bi bi-cart fs-2"></i>
+                    <h4>{{ $purchaseStats['purchase_count'] }}</h4>
+                    <small>Total Purchases - Completed: {{ $purchaseStats['completed_purchases'] }} | Pending: {{ $purchaseStats['pending_purchases'] }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <i class="bi bi-boxes fs-2"></i>
+                    <h4>${{ number_format($inventoryStats['total_value'], 2) }}</h4>
+                    <small>Inventory Value - {{ number_format($inventoryStats['total_quantity']) }} Units (Real-time)</small>
                 </div>
             </div>
         </div>
@@ -657,17 +682,23 @@
                         <strong class="text-success">${{ number_format($businessWorth['total_assets'], 2) }}</strong>
                     </div>
 
-                    <h6 class="text-danger">Liabilities:</h6>
+                    <h6 class="text-danger">Liabilities & Losses:</h6>
                     @foreach($businessWorth['liabilities'] as $name => $value)
                         <div class="d-flex justify-content-between mb-1">
                             <span>{{ ucwords(str_replace('_', ' ', $name)) }}:</span>
                             <strong class="text-danger">${{ number_format($value, 2) }}</strong>
                         </div>
                     @endforeach
+                    @if(isset($businessSummary['inventory_loss_expense']) && $businessSummary['inventory_loss_expense'] > 0)
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Inventory Losses:</span>
+                            <strong class="text-danger">${{ number_format($businessSummary['inventory_loss_expense'], 2) }}</strong>
+                        </div>
+                    @endif
                     
                     <div class="d-flex justify-content-between border-top pt-2 mb-3">
-                        <span><strong>Total Liabilities:</strong></span>
-                        <strong class="text-danger">${{ number_format($businessWorth['total_liabilities'], 2) }}</strong>
+                        <span><strong>Total Liabilities & Losses:</strong></span>
+                        <strong class="text-danger">${{ number_format($businessWorth['total_liabilities'] + ($businessSummary['inventory_loss_expense'] ?? 0), 2) }}</strong>
                     </div>
 
                     <div class="d-flex justify-content-between border-top pt-2 fs-5">
@@ -687,18 +718,21 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="ownerEquityModalLabel">Owner Equity Transaction</h5>
+                <h5 class="modal-title" id="ownerEquityModalLabel">Owner Investment/Drawing</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ route('dashboard.owner-equity') }}">
                 @csrf
                 <div class="modal-body">
+                    <div class="alert alert-info">
+                        <small><strong>Note:</strong> Owner investments increase cash balance and net worth. Owner drawings decrease cash balance and net worth.</small>
+                    </div>
                     <div class="mb-3">
                         <label for="type" class="form-label">Transaction Type</label>
                         <select class="form-control" id="type" name="type" required>
                             <option value="">Select Type</option>
-                            <option value="investment">Owner Investment</option>
-                            <option value="drawing">Owner Drawing</option>
+                            <option value="investment">Owner Investment (Increases Cash)</option>
+                            <option value="drawing">Owner Drawing (Decreases Cash)</option>
                         </select>
                     </div>
                     <div class="mb-3">

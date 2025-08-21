@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Account;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -410,18 +412,115 @@ class CustomerController extends Controller
      * Clear all outstanding loan for a customer:
      *    - mark each sale as fully paid (paid_amount = total)
      *    - reset loan field to zero
+     *    - create accounting entries for cash received
      */
     public function clearLoan(Customer $customer)
     {
-        foreach ($customer->sales as $sale) {
-            $sale->update([
-                'paid_amount' => $sale->total,
+        $totalLoanAmount = $customer->sales->sum(fn($sale) => $sale->total - $sale->paid_amount);
+        
+        if ($totalLoanAmount <= 0) {
+            return back()->withErrors(['message' => 'Customer has no outstanding loan to clear.']);
+        }
+
+        DB::transaction(function () use ($customer, $totalLoanAmount) {
+            // Update sales records
+            foreach ($customer->sales as $sale) {
+                $sale->update([
+                    'paid_amount' => $sale->total,
+                ]);
+            }
+
+            // Update customer loan field
+            $customer->update(['loan' => 0]);
+
+            // Create accounting entries for loan payment received
+            $this->createLoanPaymentAccountingEntries($totalLoanAmount, $customer->name);
+        });
+
+        return back()->with('success', "Customer loan of $" . number_format($totalLoanAmount, 2) . " has been cleared and cash recorded.");
+    }
+
+    /**
+     * Create accounting entries for loan payment
+     */
+    private function createLoanPaymentAccountingEntries($amount, $customerName)
+    {
+        $cashAccount = Account::where('code', '1000')->first();
+        $accountsReceivableAccount = Account::where('code', '1300')->first();
+
+        if ($cashAccount) {
+            Transaction::create([
+                'account_id' => $cashAccount->id,
+                'description' => "Customer loan payment received from {$customerName}",
+                'debit_amount' => $amount,
+                'credit_amount' => 0,
+                'transaction_date' => now(),
+                'transaction_type' => 'revenue'
             ]);
         }
 
-        $customer->update(['loan' => 0]);
+        if ($accountsReceivableAccount) {
+            Transaction::create([
+                'account_id' => $accountsReceivableAccount->id,
+                'description' => "Customer loan payment received from {$customerName}",
+                'debit_amount' => 0,
+                'credit_amount' => $amount,
+                'transaction_date' => now(),
+                'transaction_type' => 'revenue'
+            ]);
+        }
+    }
 
-        return back()->with('success', 'Customer loan has been cleared.');
+    /**
+     * Accept a partial payment towards a customer's outstanding loan
+     */
+    public function partialPayment(Request $request, Customer $customer)
+    {
+        // Debug: Log incoming request data
+        \Log::info('Partial payment request data:', $request->all());
+        
+        $request->validate([
+            'payment_amount' => 'required|numeric|min:0.01',
+            'payment_note' => 'nullable|string|max:255'
+        ]);
+
+        $paymentAmount = $request->payment_amount;
+        $currentLoan = $customer->sales->sum(fn($sale) => $sale->total - $sale->paid_amount);
+
+        if ($paymentAmount > $currentLoan) {
+            return back()->withErrors(['payment_amount' => 'Payment amount cannot exceed outstanding loan balance of $' . number_format($currentLoan, 2)]);
+        }
+
+        $remainingPayment = $paymentAmount;
+        
+        // Apply payment to sales starting with oldest unpaid amounts
+        foreach ($customer->sales->sortBy('created_at') as $sale) {
+            if ($remainingPayment <= 0) break;
+            
+            $saleBalance = $sale->total - $sale->paid_amount;
+            if ($saleBalance <= 0) continue;
+            
+            $paymentForThisSale = min($remainingPayment, $saleBalance);
+            
+            $sale->update([
+                'paid_amount' => $sale->paid_amount + $paymentForThisSale
+            ]);
+            
+            $remainingPayment -= $paymentForThisSale;
+        }
+
+        $newLoan = $currentLoan - $paymentAmount;
+        $customer->update(['loan' => max(0, $newLoan)]);
+
+        // Create accounting entries for the payment
+        $this->createLoanPaymentAccountingEntries($paymentAmount, $customer->name);
+
+        $message = "Payment of $" . number_format($paymentAmount, 2) . " received";
+        if ($request->payment_note) {
+            $message .= " - " . $request->payment_note;
+        }
+
+        return back()->with('success', $message . '. Remaining balance: $' . number_format(max(0, $newLoan), 2));
     }
 
     /**

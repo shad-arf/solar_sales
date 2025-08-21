@@ -41,12 +41,12 @@ class OwnerEquity extends Model
 
     public static function getTotalInvestments()
     {
-        return self::investments()->sum('amount');
+        return self::investments()->sum('amount') ?: 0;
     }
 
     public static function getTotalDrawings()
     {
-        return self::drawings()->sum('amount');
+        return self::drawings()->sum('amount') ?: 0;
     }
 
     public static function getNetEquity()

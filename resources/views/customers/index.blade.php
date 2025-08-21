@@ -416,6 +416,16 @@
                                 </a>
 
                                 @if($loan > 0)
+                                    <button class="btn btn-sm btn-outline-success" 
+                                            title="Partial Payment"
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#partialPaymentModal"
+                                            data-customer-id="{{ $customer->id }}"
+                                            data-customer-name="{{ $customer->name }}"
+                                            data-loan-amount="{{ $loan }}">
+                                        <i class="bi bi-cash-coin"></i>
+                                    </button>
+
                                     <form action="{{ route('customers.clearLoan', $customer->id) }}" method="POST"
                                           class="d-inline" onsubmit="return confirm('Clear loan for {{ $customer->name }}?');">
                                         @csrf
@@ -460,6 +470,69 @@
     </div>
     <div>
         {{ $customers->appends(request()->query())->links() }}
+    </div>
+</div>
+
+<!-- Partial Payment Modal -->
+<div class="modal fade" id="partialPaymentModal" tabindex="-1" aria-labelledby="partialPaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="partialPaymentModalLabel">Partial Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="partialPaymentForm" method="POST">
+                @csrf
+                <input type="hidden" id="customer_id_input" name="_customer_id" value="">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <h6 class="text-muted">Customer: <span id="modalCustomerName" class="text-dark"></span></h6>
+                        <h6 class="text-muted">Outstanding Balance: <span id="modalLoanAmount" class="text-danger fw-bold"></span></h6>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="payment_amount" class="form-label">Payment Amount <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" 
+                                   class="form-control @error('payment_amount') is-invalid @enderror" 
+                                   id="payment_amount" 
+                                   name="payment_amount" 
+                                   step="0.01" 
+                                   min="0.01" 
+                                   max="" 
+                                   placeholder="0.00" 
+                                   value="{{ old('payment_amount') }}"
+                                   required>
+                        </div>
+                        <div class="form-text">Maximum amount: $<span id="maxPaymentAmount">0.00</span></div>
+                        @error('payment_amount')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="payment_note" class="form-label">Payment Note (Optional)</label>
+                        <input type="text" 
+                               class="form-control @error('payment_note') is-invalid @enderror" 
+                               id="payment_note" 
+                               name="payment_note" 
+                               placeholder="e.g., Cash payment, Check #123, etc."
+                               value="{{ old('payment_note') }}"
+                               maxlength="255">
+                        @error('payment_note')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-cash-coin me-1"></i>Record Payment
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -527,6 +600,77 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('search');
     let searchTimeout;
+
+    // Partial payment modal handling
+    const partialPaymentModal = document.getElementById('partialPaymentModal');
+    const partialPaymentForm = document.getElementById('partialPaymentForm');
+    
+    if (partialPaymentModal) {
+        partialPaymentModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const customerId = button.getAttribute('data-customer-id');
+            const customerName = button.getAttribute('data-customer-name');
+            const loanAmount = parseFloat(button.getAttribute('data-loan-amount'));
+            
+            // Update modal content
+            document.getElementById('modalCustomerName').textContent = customerName;
+            document.getElementById('modalLoanAmount').textContent = '$' + loanAmount.toFixed(2);
+            document.getElementById('maxPaymentAmount').textContent = loanAmount.toFixed(2);
+            
+            // Set form action URL
+            partialPaymentForm.action = `/customers/${customerId}/partial-payment`;
+            
+            // Set customer ID for error handling
+            document.getElementById('customer_id_input').value = customerId;
+            
+            // Set max amount for input
+            const paymentInput = document.getElementById('payment_amount');
+            paymentInput.max = loanAmount.toFixed(2);
+            paymentInput.value = '';
+            
+            // Clear note field
+            document.getElementById('payment_note').value = '';
+        });
+        
+        // Clear form when modal is hidden
+        partialPaymentModal.addEventListener('hidden.bs.modal', function() {
+            document.getElementById('payment_amount').value = '';
+            document.getElementById('payment_note').value = '';
+            // Remove validation classes
+            document.getElementById('payment_amount').classList.remove('is-invalid');
+            document.getElementById('payment_note').classList.remove('is-invalid');
+        });
+    }
+
+    // Check if there are validation errors and reopen modal if needed
+    @if($errors->has('payment_amount') || $errors->has('payment_note'))
+        // Find the customer that had the error and reopen modal
+        const lastCustomerId = '{{ old('_customer_id') }}';
+        if (lastCustomerId && partialPaymentModal) {
+            const targetButton = document.querySelector(`[data-customer-id="${lastCustomerId}"]`);
+            if (targetButton) {
+                // Trigger the modal with the button data
+                const customerId = targetButton.getAttribute('data-customer-id');
+                const customerName = targetButton.getAttribute('data-customer-name');
+                const loanAmount = parseFloat(targetButton.getAttribute('data-loan-amount'));
+                
+                // Update modal content
+                document.getElementById('modalCustomerName').textContent = customerName;
+                document.getElementById('modalLoanAmount').textContent = '$' + loanAmount.toFixed(2);
+                document.getElementById('maxPaymentAmount').textContent = loanAmount.toFixed(2);
+                
+                // Set form action URL
+                partialPaymentForm.action = `/customers/${customerId}/partial-payment`;
+                
+                // Set max amount for input
+                const paymentInput = document.getElementById('payment_amount');
+                paymentInput.max = loanAmount.toFixed(2);
+                
+                // Show the modal
+                new bootstrap.Modal(partialPaymentModal).show();
+            }
+        }
+    @endif
 
     // Auto-submit on dropdown changes
     const autoSubmitFields = ['loan_status', 'country', 'city', 'sort_by', 'sort_direction', 'per_page'];

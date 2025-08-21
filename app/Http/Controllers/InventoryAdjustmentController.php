@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\InventoryAdjustment;
 use App\Models\Item;
+use App\Models\Account;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -49,6 +51,9 @@ class InventoryAdjustmentController extends Controller
             // Update item quantity to actual quantity
             $item = Item::findOrFail($request->item_id);
             $item->update(['quantity' => $request->actual_quantity]);
+
+            // Create accounting entries for inventory adjustments
+            $this->createInventoryAdjustmentAccountingEntries($adjustment);
         });
 
         return redirect()->route('inventory-adjustments.index')
@@ -79,12 +84,21 @@ class InventoryAdjustmentController extends Controller
         ]);
 
         DB::transaction(function () use ($request, $inventoryAdjustment) {
+            // Store old adjustment for reversal
+            $oldAdjustment = $inventoryAdjustment->replicate();
+            $oldAdjustment->adjustment_quantity = -$inventoryAdjustment->adjustment_quantity;
+            $oldAdjustment->financial_impact = $inventoryAdjustment->financial_impact;
+            
             // Update adjustment record
             $inventoryAdjustment->update($request->all());
 
             // Update item quantity to new actual quantity
             $item = Item::findOrFail($request->item_id);
             $item->update(['quantity' => $request->actual_quantity]);
+
+            // Reverse old accounting entries and create new ones
+            $this->createInventoryAdjustmentAccountingEntries($oldAdjustment, true);
+            $this->createInventoryAdjustmentAccountingEntries($inventoryAdjustment);
         });
 
         return redirect()->route('inventory-adjustments.show', $inventoryAdjustment)
@@ -113,7 +127,7 @@ class InventoryAdjustmentController extends Controller
 
         DB::transaction(function () use ($request, $item, $systemQuantity) {
             // Create adjustment record
-            InventoryAdjustment::create([
+            $adjustment = InventoryAdjustment::create([
                 'item_id' => $request->item_id,
                 'system_quantity' => $systemQuantity,
                 'actual_quantity' => $request->actual_quantity,
@@ -124,8 +138,89 @@ class InventoryAdjustmentController extends Controller
 
             // Update item quantity
             $item->update(['quantity' => $request->actual_quantity]);
+
+            // Create accounting entries for inventory adjustments
+            $this->createInventoryAdjustmentAccountingEntries($adjustment);
         });
 
         return back()->with('success', 'Inventory adjusted successfully!');
+    }
+
+    /**
+     * Create accounting entries for inventory adjustments
+     */
+    private function createInventoryAdjustmentAccountingEntries(InventoryAdjustment $adjustment, $isReversal = false)
+    {
+        // Get required accounts
+        $inventoryAccount = Account::where('code', '1200')->first(); // Inventory
+        $expenseAccount = Account::where('code', '5000')->first(); // Cost of Goods Sold (for losses)
+        
+        if (!$inventoryAccount || !$expenseAccount) {
+            throw new \Exception('Required accounts (Inventory or Cost of Goods Sold) not found. Please run database seeders.');
+        }
+
+        $financialImpact = $adjustment->financial_impact;
+        $adjustmentQuantity = $adjustment->adjustment_quantity;
+        $referenceNumber = "IA-{$adjustment->id}-" . strtoupper($adjustment->reason);
+        $description = "Inventory adjustment: {$adjustment->item->name ?? 'Unknown'} - " . InventoryAdjustment::REASONS[$adjustment->reason];
+
+        if ($isReversal) {
+            $description = "Reversal: " . $description;
+            $adjustmentQuantity = -$adjustmentQuantity;
+        }
+
+        // Only create entries if there's a financial impact
+        if ($financialImpact > 0) {
+            if ($adjustmentQuantity < 0) {
+                // Inventory Decrease (Loss): Credit Inventory, Debit Expense
+                
+                // Credit Inventory (decrease inventory asset)
+                Transaction::create([
+                    'account_id' => $inventoryAccount->id,
+                    'description' => $description,
+                    'debit_amount' => 0,
+                    'credit_amount' => $financialImpact,
+                    'transaction_date' => $adjustment->adjustment_date,
+                    'reference_number' => $referenceNumber,
+                    'transaction_type' => 'other'
+                ]);
+
+                // Debit Cost of Goods Sold (record the loss as expense)
+                Transaction::create([
+                    'account_id' => $expenseAccount->id,
+                    'description' => $description,
+                    'debit_amount' => $financialImpact,
+                    'credit_amount' => 0,
+                    'transaction_date' => $adjustment->adjustment_date,
+                    'reference_number' => $referenceNumber,
+                    'transaction_type' => 'other'
+                ]);
+
+            } else {
+                // Inventory Increase (Found items): Debit Inventory, Credit Cost of Goods Sold
+                
+                // Debit Inventory (increase inventory asset)
+                Transaction::create([
+                    'account_id' => $inventoryAccount->id,
+                    'description' => $description,
+                    'debit_amount' => $financialImpact,
+                    'credit_amount' => 0,
+                    'transaction_date' => $adjustment->adjustment_date,
+                    'reference_number' => $referenceNumber,
+                    'transaction_type' => 'other'
+                ]);
+
+                // Credit Cost of Goods Sold (reduce expense)
+                Transaction::create([
+                    'account_id' => $expenseAccount->id,
+                    'description' => $description,
+                    'debit_amount' => 0,
+                    'credit_amount' => $financialImpact,
+                    'transaction_date' => $adjustment->adjustment_date,
+                    'reference_number' => $referenceNumber,
+                    'transaction_type' => 'other'
+                ]);
+            }
+        }
     }
 }

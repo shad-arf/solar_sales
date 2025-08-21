@@ -10,6 +10,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\ItemSaleController;
 use App\Http\Controllers\InventoryAdjustmentController;
 
@@ -61,6 +62,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/customers/{id}/restore', [CustomerController::class, 'restore'])->name('customers.restore');
     Route::delete('/customers/{id}/force-delete', [CustomerController::class, 'forceDelete'])->name('customers.forceDelete');
     Route::post('/customers/{customer}/clear-loan', [CustomerController::class, 'clearLoan'])->name('customers.clearLoan');
+    Route::post('/customers/{customer}/partial-payment', [CustomerController::class, 'partialPayment'])->name('customers.partialPayment');
 
     // Sales
     Route::resource('sales', SaleController::class);
@@ -82,6 +84,7 @@ Route::middleware('auth')->group(function () {
     // Financial Management
     Route::resource('income', IncomeController::class);
     Route::resource('expenses', ExpenseController::class);
+    Route::resource('transactions', TransactionController::class);
 
     // Item Sales (Profit/Loss Tracking)
     Route::resource('item-sales', ItemSaleController::class);
