@@ -88,7 +88,7 @@ class InventoryAdjustmentController extends Controller
             $oldAdjustment = $inventoryAdjustment->replicate();
             $oldAdjustment->adjustment_quantity = -$inventoryAdjustment->adjustment_quantity;
             $oldAdjustment->financial_impact = $inventoryAdjustment->financial_impact;
-            
+
             // Update adjustment record
             $inventoryAdjustment->update($request->all());
 
@@ -154,7 +154,7 @@ class InventoryAdjustmentController extends Controller
         // Get required accounts
         $inventoryAccount = Account::where('code', '1200')->first(); // Inventory
         $expenseAccount = Account::where('code', '5000')->first(); // Cost of Goods Sold (for losses)
-        
+
         if (!$inventoryAccount || !$expenseAccount) {
             throw new \Exception('Required accounts (Inventory or Cost of Goods Sold) not found. Please run database seeders.');
         }
@@ -162,7 +162,7 @@ class InventoryAdjustmentController extends Controller
         $financialImpact = $adjustment->financial_impact;
         $adjustmentQuantity = $adjustment->adjustment_quantity;
         $referenceNumber = "IA-{$adjustment->id}-" . strtoupper($adjustment->reason);
-        $description = "Inventory adjustment: {$adjustment->item->name ?? 'Unknown'} - " . InventoryAdjustment::REASONS[$adjustment->reason];
+        $description = "Inventory adjustment: " . (isset($adjustment->item->name) ? $adjustment->item->name : 'Unknown') . " - " . InventoryAdjustment::REASONS[$adjustment->reason];
 
         if ($isReversal) {
             $description = "Reversal: " . $description;
@@ -173,7 +173,7 @@ class InventoryAdjustmentController extends Controller
         if ($financialImpact > 0) {
             if ($adjustmentQuantity < 0) {
                 // Inventory Decrease (Loss): Credit Inventory, Debit Expense
-                
+
                 // Credit Inventory (decrease inventory asset)
                 Transaction::create([
                     'account_id' => $inventoryAccount->id,
@@ -198,7 +198,7 @@ class InventoryAdjustmentController extends Controller
 
             } else {
                 // Inventory Increase (Found items): Debit Inventory, Credit Cost of Goods Sold
-                
+
                 // Debit Inventory (increase inventory asset)
                 Transaction::create([
                     'account_id' => $inventoryAccount->id,
