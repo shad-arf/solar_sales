@@ -20,5 +20,9 @@ class DatabaseSeeder extends Seeder
             'email' => 'shad@gmail.com',
             'password' => bcrypt('1234567890'),
         ]);
+
+        $this->call([
+            ChartOfAccountsSeeder::class,
+        ]);
     }
 }

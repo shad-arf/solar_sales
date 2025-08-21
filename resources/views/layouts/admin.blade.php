@@ -158,7 +158,7 @@
         <ul class="sidebar-menu">
             <!-- Dashboard -->
             <li>
-                <a href="{{ route('items.index') }}" class="{{ request()->is('/') ? 'active' : '' }}">
+                <a href="{{ route('dashboard') }}" class="{{ request()->is('/') || request()->is('dashboard') ? 'active' : '' }}">
                     <i class="bi bi-speedometer2"></i>Dashboard
                 </a>
             </li>
@@ -186,6 +186,11 @@
             <li>
                 <a href="{{ route('items.outOfStock') }}" class="{{ request()->is('items/status/out-of-stock') ? 'active' : '' }}">
                     <i class="bi bi-x-circle"></i>Out of Stock
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('inventory-adjustments.index') }}" class="{{ request()->is('inventory-adjustments*') ? 'active' : '' }}">
+                    <i class="bi bi-clipboard-data"></i>Inventory Adjustments
                 </a>
             </li>
 
@@ -224,6 +229,46 @@
                 </a>
             </li>
 
+            <!-- Financial Management -->
+            <li class="menu-header">
+                <span>Financial Management</span>
+            </li>
+            <li>
+                <a href="{{ route('income.index') }}" class="{{ request()->is('income') && !request()->is('income/create') ? 'active' : '' }}">
+                    <i class="bi bi-cash-stack"></i>All Income
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('income.create') }}" class="{{ request()->is('income/create') ? 'active' : '' }}">
+                    <i class="bi bi-plus-circle"></i>Add Income
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('expenses.index') }}" class="{{ request()->is('expenses') && !request()->is('expenses/create') ? 'active' : '' }}">
+                    <i class="bi bi-receipt"></i>All Expenses
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('expenses.create') }}" class="{{ request()->is('expenses/create') ? 'active' : '' }}">
+                    <i class="bi bi-plus-circle"></i>Add Expense
+                </a>
+            </li>
+
+            <!-- Profit/Loss Tracking -->
+            <li class="menu-header">
+                <span>Profit/Loss Tracking</span>
+            </li>
+            <li>
+                <a href="{{ route('item-sales.index') }}" class="{{ request()->is('item-sales') && !request()->is('item-sales/create') ? 'active' : '' }}">
+                    <i class="bi bi-graph-up-arrow"></i>Item Sales & Profit
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('item-sales.create') }}" class="{{ request()->is('item-sales/create') ? 'active' : '' }}">
+                    <i class="bi bi-plus-circle"></i>Record Sale
+                </a>
+            </li>
+
             <!-- Administration -->
             @if(auth()->check())
             <li class="menu-header">
@@ -238,21 +283,26 @@
 
             <!-- Reports & Export -->
             <li class="menu-header">
-                <span>Reports</span>
+                <span>Reports & Export</span>
+            </li>
+            <li>
+                <a href="#" class="">
+                    <i class="bi bi-file-earmark-text"></i>Financial Report
+                </a>
+            </li>
+            <li>
+                <a href="#" class="">
+                    <i class="bi bi-download"></i>Export Income
+                </a>
+            </li>
+            <li>
+                <a href="#" class="">
+                    <i class="bi bi-download"></i>Export Expenses
+                </a>
             </li>
             <li>
                 <a href="#" class="">
                     <i class="bi bi-download"></i>Export Items
-                </a>
-            </li>
-            <li>
-                <a href="#" class="">
-                    <i class="bi bi-download"></i>Export Customers
-                </a>
-            </li>
-            <li>
-                <a href="#" class="">
-                    <i class="bi bi-download"></i>Export Sales
                 </a>
             </li>
         </ul>

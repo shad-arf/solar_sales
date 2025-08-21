@@ -4,7 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Add New Item</h2>
     <div>
-    
+
         <a href="{{ route('items.index') }}" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Back to Items
         </a>
@@ -65,7 +65,7 @@
                             <div class="row">
                                 <div class="col-md-3">
                                     <label class="form-label">Unit/Type Name</label>
-                                    <input type="text" name="pricing[0][unit_name]" value="{{ old('pricing.0.unit_name', 'Regular Price') }}" class="form-control" placeholder="e.g., Per piece, Per kg" required>
+                                    <input type="text" name="pricing[0][unit_name]" value="{{ old('pricing.0.unit_name', 'End User Price') }}" class="form-control" placeholder="e.g., Per piece, Per kg" required>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label">Unit Description</label>
@@ -98,7 +98,7 @@
                             <div class="row">
                                 <div class="col-md-3">
                                     <label class="form-label">Unit/Type Name</label>
-                                    <input type="text" name="pricing[1][unit_name]" value="{{ old('pricing.1.unit_name', 'Wholesale Price') }}" class="form-control" placeholder="e.g., Per dozen, Bulk">
+                                    <input type="text" name="pricing[1][unit_name]" value="{{ old('pricing.1.unit_name', 'Installer Price') }}" class="form-control" placeholder="e.g., Per dozen, Bulk">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label">Unit Description</label>
@@ -131,7 +131,7 @@
                             <div class="row">
                                 <div class="col-md-3">
                                     <label class="form-label">Unit/Type Name</label>
-                                    <input type="text" name="pricing[2][unit_name]" value="{{ old('pricing.2.unit_name', 'Operator Price') }}" class="form-control" placeholder="e.g., Per box, Special">
+                                    <input type="text" name="pricing[2][unit_name]" value="{{ old('pricing.2.unit_name', 'Reseller Price') }}" class="form-control" placeholder="e.g., Per box, Special">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label">Unit Description</label>

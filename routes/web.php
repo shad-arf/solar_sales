@@ -7,6 +7,11 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\IncomeController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\ItemSaleController;
+use App\Http\Controllers\InventoryAdjustmentController;
 
 
 Route::get('register', [AuthController::class, 'showRegisterForm'])->name('register.form');
@@ -18,11 +23,15 @@ Route::post('login', [AuthController::class, 'login'])->name('login');
 
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
-// Redirect to items page
-Route::get('/', fn () => redirect()->route('items.index'));
+// Redirect to dashboard
+Route::get('/', fn () => redirect()->route('dashboard'));
 
 // Authenticated Routes
 Route::middleware('auth')->group(function () {
+    // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/dashboard/owner-equity', [DashboardController::class, 'addOwnerEquity'])->name('dashboard.owner-equity');
+
     // Users management
     Route::get('/users', [AuthController::class, 'users'])->name('users.index');
     Route::get('users/create', [AuthController::class, 'create'])->name('users.create');
@@ -69,6 +78,17 @@ Route::middleware('auth')->group(function () {
     Route::resource('purchases', PurchaseController::class);
     Route::post('/purchases/{purchase}/complete', [PurchaseController::class, 'complete'])->name('purchases.complete');
     Route::get('/suppliers/{supplier}/history', [PurchaseController::class, 'supplierHistory'])->name('suppliers.history');
+
+    // Financial Management
+    Route::resource('income', IncomeController::class);
+    Route::resource('expenses', ExpenseController::class);
+
+    // Item Sales (Profit/Loss Tracking)
+    Route::resource('item-sales', ItemSaleController::class);
+
+    // Inventory Adjustments
+    Route::resource('inventory-adjustments', InventoryAdjustmentController::class);
+    Route::post('/inventory-adjustments/quick-adjust', [InventoryAdjustmentController::class, 'quickAdjust'])->name('inventory-adjustments.quick-adjust');
 });
 
 // Authenticated admin routes

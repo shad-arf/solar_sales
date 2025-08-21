@@ -67,6 +67,7 @@
                             $activePrices = $item->activePrices;
                             $defaultIndex = 0;
 
+
                             // If we have active prices from the new table, use them
                             if ($activePrices->count() > 0) {
                                 foreach ($activePrices as $index => $priceItem) {
@@ -77,10 +78,9 @@
                                 }
                             } else {
                                 // Fallback to legacy pricing
-                                $activePrices = collect();
                                 if ($item->price > 0) {
                                     $activePrices->push((object)[
-                                        'name' => 'Regular Price',
+                                        'name' => 'End User Price',
                                         'price' => $item->price,
                                         'description' => 'Standard selling price',
                                         'is_default' => true
@@ -88,7 +88,7 @@
                                 }
                                 if ($item->base_price > 0) {
                                     $activePrices->push((object)[
-                                        'name' => 'Wholesale Price',
+                                        'name' => 'Installer Price',
                                         'price' => $item->base_price,
                                         'description' => 'Bulk/wholesale pricing',
                                         'is_default' => false
@@ -96,9 +96,9 @@
                                 }
                                 if ($item->operator_price > 0) {
                                     $activePrices->push((object)[
-                                        'name' => 'Operator Price',
+                                        'name' => 'Reseller Price',
                                         'price' => $item->operator_price,
-                                        'description' => 'Special operator pricing',
+                                        'description' => 'Special reseller pricing',
                                         'is_default' => false
                                     ]);
                                 }
@@ -106,7 +106,7 @@
                                 // If no prices exist, create a default one
                                 if ($activePrices->isEmpty()) {
                                     $activePrices->push((object)[
-                                        'name' => 'Regular Price',
+                                        'name' => 'End User Price',
                                         'price' => 0,
                                         'description' => 'Standard selling price',
                                         'is_default' => true
@@ -226,7 +226,7 @@
                 <button type="button" class="btn btn-outline-info" onclick="openPricingHelper()">
                     <i class="bi bi-calculator"></i> Pricing Helper
                 </button>
-       
+
             </div>
         </form>
     </div>

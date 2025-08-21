@@ -455,9 +455,9 @@
                             @php
                                 $activePrices = $item->activePrices;
                                 $priceIcons = [
-                                    'Regular Price' => ['class' => 'text-primary', 'icon' => 'bi-currency-dollar'],
-                                    'Wholesale Price' => ['class' => 'text-info', 'icon' => 'bi-box'],
-                                    'Operator Price' => ['class' => 'text-warning', 'icon' => 'bi-tools'],
+                                    'End User Price' => ['class' => 'text-primary', 'icon' => 'bi-currency-dollar'],
+                                    'Reseller Price' => ['class' => 'text-info', 'icon' => 'bi-box'],
+                                    'Installer Price' => ['class' => 'text-warning', 'icon' => 'bi-tools'],
                                     'Per piece' => ['class' => 'text-success', 'icon' => 'bi-boxes'],
                                     'Per kg' => ['class' => 'text-secondary', 'icon' => 'bi-speedometer'],
                                 ];
