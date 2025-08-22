@@ -154,11 +154,6 @@ class PurchaseController extends Controller
      */
     public function edit(Purchase $purchase)
     {
-        if ($purchase->status !== 'pending') {
-            return redirect()->route('purchases.show', $purchase)
-                           ->with('error', 'Only pending purchases can be edited.');
-        }
-
         $suppliers = Supplier::active()->orderBy('name')->get();
         $items = Item::orderBy('name')->get();
         $purchase->load(['purchaseItems.item']);
@@ -171,11 +166,6 @@ class PurchaseController extends Controller
      */
     public function update(Request $request, Purchase $purchase)
     {
-        if ($purchase->status !== 'pending') {
-            return redirect()->route('purchases.show', $purchase)
-                           ->with('error', 'Only pending purchases can be updated.');
-        }
-
         $validated = $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
             'purchase_date' => 'required|date',

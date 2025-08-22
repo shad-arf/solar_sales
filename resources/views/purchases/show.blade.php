@@ -7,11 +7,9 @@
         <a href="{{ route('purchases.index') }}" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Back to Purchases
         </a>
-        @if($purchase->status === 'pending')
-            <a href="{{ route('purchases.edit', $purchase) }}" class="btn btn-primary">
-                <i class="bi bi-pencil-square"></i> Edit Purchase
-            </a>
-        @endif
+        <a href="{{ route('purchases.edit', $purchase) }}" class="btn btn-primary">
+            <i class="bi bi-pencil-square"></i> Edit Purchase
+        </a>
     </div>
 </div>
 
@@ -71,12 +69,12 @@
                 <p class="mb-0"><strong>{{ $purchase->total_items }}</strong> Items</p>
             </div>
         </div>
-        @if($purchase->status === 'pending')
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h6 class="mb-0">Actions</h6>
-                </div>
-                <div class="card-body">
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Actions</h6>
+            </div>
+            <div class="card-body">
+                @if($purchase->status === 'pending')
                     <form action="{{ route('purchases.complete', $purchase) }}" method="POST" class="mb-2">
                         @csrf
                         <button class="btn btn-success btn-sm w-100" 
@@ -84,12 +82,12 @@
                             <i class="bi bi-check-circle"></i> Mark as Completed
                         </button>
                     </form>
-                    <a href="{{ route('suppliers.history', $purchase->supplier_id) }}" class="btn btn-outline-info btn-sm w-100">
-                        <i class="bi bi-building"></i> Supplier History
-                    </a>
-                </div>
+                @endif
+                <a href="{{ route('suppliers.history', $purchase->supplier_id) }}" class="btn btn-outline-info btn-sm w-100">
+                    <i class="bi bi-building"></i> Supplier History
+                </a>
             </div>
-        @endif
+        </div>
     </div>
 </div>
 
