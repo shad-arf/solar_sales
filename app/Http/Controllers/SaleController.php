@@ -280,9 +280,9 @@ class SaleController extends Controller
         $items = Item::with(['itemPrices' => function($query) {
             $query->where('is_active', true)->orderBy('sort_order');
         }])->whereNull('deleted_at')->get();
-        
+
         $customers = Customer::whereNull('deleted_at')->get();
-        
+
         // Get the next sale ID
         $saleId = Sale::whereNull('deleted_at')->max('id') + 1;
 
@@ -340,10 +340,11 @@ class SaleController extends Controller
             $lineTotal  = $validated['line_total'][$i];
             $priceId    = $validated['price_id'][$i];
 
-            $item = Item::findOrFail($itemId);
-            if ($item->quantity < $quantity) {
-                throw new \Exception("Not enough stock for {$item->name}. Available: {$item->quantity}");
-            }
+            $item = Item::findOrFail(id: $itemId);
+            //  They said we have issue with stock going negative, so commenting out for now
+            // if ($item->quantity < $quantity) {
+            //     throw new \Exception("Not enough stock for {$item->name}. Available: {$item->quantity}");
+            // }
 
             // Get the selected price from the new pricing table
             $itemPrice = \App\Models\ItemPrice::findOrFail($priceId);
@@ -390,7 +391,7 @@ class SaleController extends Controller
         $items = Item::with(['itemPrices' => function($query) {
             $query->where('is_active', true)->orderBy('sort_order');
         }])->whereNull('deleted_at')->get();
-        
+
         $customers = Customer::whereNull('deleted_at')->get();
         $payments  = Payment::where('sale_id', $sale->id)->latest()->get();
 
@@ -425,7 +426,7 @@ class SaleController extends Controller
             'line_total'      => 'required|array',
             'line_total.*'    => 'required|numeric|min:0',
 
-            'paid'            => 'nullable|numeric',
+            'paid_amount'     => 'required|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -503,18 +504,12 @@ class SaleController extends Controller
             // Apply discount to get final total
             $discount = $validated['discount'] ?? 0;
             $finalTotal = max(0, $subtotal - $discount);
-            $sale->update(['total' => $finalTotal]);
 
-            $newPay = floatval($validated['paid'] ?? 0);
-            if ($newPay > 0) {
-                Payment::create([
-                    'sale_id' => $sale->id,
-                    'amount'  => $newPay,
-                    'paid_at' => now(),
-                    'note'    => 'Edit: additional payment',
-                ]);
-                $sale->increment('paid_amount', $newPay);
-            }
+            // Update total and paid_amount
+            $sale->update([
+                'total' => $finalTotal,
+                'paid_amount' => $validated['paid_amount']
+            ]);
 
             DB::commit();
 

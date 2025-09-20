@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Solar Sales Admin</title>
+    <title>Solar Sales Management System</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/jpeg" href="{{ asset('images/logo.jpg') }}">
+    <link rel="shortcut icon" type="image/jpeg" href="{{ asset('images/logo.jpg') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/logo.jpg') }}">
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>

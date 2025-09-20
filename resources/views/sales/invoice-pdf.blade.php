@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Invoice #{{ $sale->code }}</title>
+    <title>Invoice #{{ $sale->code }} - Solar Sales</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/jpeg" href="{{ asset('images/logo.jpg') }}">
+    <link rel="shortcut icon" type="image/jpeg" href="{{ asset('images/logo.jpg') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/logo.jpg') }}">
     <style>
         body {
             font-family: DejaVu Sans, sans-serif;
@@ -53,10 +58,10 @@
         <table style="width: 100%; margin-bottom: 20px; border: none;">
             <tr>
                 <td style="vertical-align: top; width: 50%; border: none;">
-                    <img src="https://photon.shadarf.dev/images/logo.jpg" alt="Company Logo" style="max-width: 150px;">
+                    <img src="{{ asset('images/logo.jpg') }}" alt="Company Logo" style="max-width: 150px;" crossorigin="anonymous">
                 </td>
                 <td style="vertical-align: top; text-align: right; width: 50%; border: none;">
-                    <h2>Photon</h2>
+                    <h2>Tavyar</h2>
                     <p>Main Street Mosul, Kahabt</p>
                     <p>Phone: (964) 7709647036</p>
                 </td>
@@ -74,7 +79,7 @@
             <tr>
                 <td style="vertical-align: top; width: 50%; border: none;">
                     <h5>From:</h5>
-                    <strong>Photon</strong><br>
+                    <strong>Tavyar</strong><br>
                     Main Street Mosul<br>
                     Kahabt<br>
                     Phone: (964) 7709647036<br>
@@ -115,9 +120,9 @@
                         <td>{{ $index + 1 }}</td>
                         <td>{{ $item->item->name ?? 'Deleted Item' }}</td>
                         <td class="text-center">{{ $item->quantity }}</td>
-                        <td class="text-end">{{ number_format($item->unit_price, 2) }}</td>
-                        <td class="text-end">{{ number_format($item->line_discount, 2) }}</td>
-                        <td class="text-end">{{ number_format($lineTotal, 2) }}</td>
+                        <td class="text-end">{{ number_format($item->unit_price, 2) }}$</td>
+                        <td class="text-end">{{ number_format($item->line_discount, 2) }}%</td>
+                        <td class="text-end">{{ number_format($lineTotal, 2) }}$</td>
                     </tr>
                 @empty
                     <tr>
@@ -138,26 +143,26 @@
         <table class="borderless" style="width: 40%; float: right;">
             <tr>
                 <td><strong>Subtotal:</strong></td>
-                <td class="text-end">${{ number_format($subtotal, 2) }}</td>
+                <td class="text-end">{{ number_format($subtotal, 2) }}$</td>
             </tr>
             @if($discountTotal > 0)
             <tr>
                 <td><strong>Discount:</strong></td>
-                <td class="text-end">- ${{ number_format($discountTotal, 2) }}</td>
+                <td class="text-end">- {{ number_format($discountTotal, 2) }}$</td>
             </tr>
             @endif
             <tr>
                 <td><strong>Total:</strong></td>
-                <td class="text-end">${{ number_format($totalAmount, 2) }}</td>
+                <td class="text-end">{{ number_format($totalAmount, 2) }}$</td>
             </tr>
             <tr>
                 <td><strong>Paid:</strong></td>
-                <td class="text-end">${{ number_format($paidAmount, 2) }}</td>
+                <td class="text-end">{{ number_format($paidAmount, 2) }}$</td>
             </tr>
             <tr>
                 <td><strong>Outstanding:</strong></td>
                 <td class="text-end {{ $outstanding > 0 ? 'text-danger' : '' }}">
-                    ${{ number_format($outstanding, 2) }}
+                    {{ number_format($outstanding, 2) }}$
                 </td>
             </tr>
         </table>
@@ -176,8 +181,14 @@
             // Grab the invoice element
             const invoice = document.getElementById('invoice-wrapper');
 
-            // Render to canvas
-            const canvas = await html2canvas(invoice, { scale: 2 });
+            // Render to canvas with better image handling
+            const canvas = await html2canvas(invoice, {
+                scale: 2,
+                allowTaint: true,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
             const imgData = canvas.toDataURL('image/png');
 
             // Create jsPDF instance

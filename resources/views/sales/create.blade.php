@@ -138,6 +138,14 @@
         </div>
         <div class="col-md-3">
             <label>Amount Paid</label>
+            <div class="mb-2">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="is_paid_toggle" onchange="togglePaidAmount()" checked>
+                    <label class="form-check-label" for="is_paid_toggle">
+                        Is Paid
+                    </label>
+                </div>
+            </div>
             <input type="number" name="paid_amount" id="paid_amount"
                    class="form-control"
                    value="{{ old('paid_amount','0.00') }}"
@@ -292,6 +300,13 @@
     const subtotal = Math.max(0, itemsTotal - discount);
     document.getElementById('subtotal').value = subtotal.toFixed(2);
     
+    // If "Is Paid" toggle is checked, update paid amount to match subtotal
+    const isPaidToggle = document.getElementById('is_paid_toggle');
+    const paidAmountInput = document.getElementById('paid_amount');
+    if (isPaidToggle && isPaidToggle.checked) {
+      paidAmountInput.value = subtotal.toFixed(2);
+    }
+    
     recalcOutstanding();
   }
 
@@ -299,6 +314,24 @@
     const sub = +document.getElementById('subtotal').value || 0;
     const paid = +document.getElementById('paid_amount').value || 0;
     document.getElementById('outstanding').value = (sub - paid).toFixed(2);
+  }
+
+  function togglePaidAmount() {
+    const isPaidToggle = document.getElementById('is_paid_toggle');
+    const paidAmountInput = document.getElementById('paid_amount');
+    const subtotalValue = +document.getElementById('subtotal').value || 0;
+    
+    if (isPaidToggle.checked) {
+      // When toggle is activated, set paid amount to subtotal
+      paidAmountInput.value = subtotalValue.toFixed(2);
+      paidAmountInput.readOnly = true;
+    } else {
+      // When toggle is deactivated, set to 0 and allow editing
+      paidAmountInput.value = '0.00';
+      paidAmountInput.readOnly = false;
+    }
+    
+    recalcOutstanding();
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -310,6 +343,9 @@
         if (el.value) updateItemOptions(el);
       });
     }
+    
+    // Initialize the toggle state on page load
+    togglePaidAmount();
   });
 
   // Auto-suggest price type based on customer type

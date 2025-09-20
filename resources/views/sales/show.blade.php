@@ -40,7 +40,7 @@
         <div class="row mb-4">
             <div class="col-sm-6">
                 <h5>From:</h5>
-                <strong>Photon</strong><br>
+                <strong>Tavyar</strong><br>
                 Main Street Mosul<br>
                 Kahabt<br>
                 Phone: (964) 7709647036<br>
