@@ -446,7 +446,14 @@ class SaleController extends Controller
             }
 
             // c) availability check
-
+            foreach ($adjustments as $itemId => $delta) {
+                if ($delta < 0) {
+                    $item = Item::findOrFail($itemId);
+                    // if ($item->quantity < abs($delta)) {
+                    //     throw new \Exception(message: "Insufficient stock for {$item->name} ({$item->quantity} available)");
+                    // }
+                }
+            }
 
             // d) apply adjustments
             foreach ($adjustments as $itemId => $delta) {
