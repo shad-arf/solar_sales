@@ -418,7 +418,7 @@ class SaleController extends Controller
             'price_id.*'      => 'required|exists:item_prices,id',
 
             'quantity'        => 'required|array',
-            'quantity.*'      => 'required|integer|min:1',
+            'quantity.*'      => 'required|integer',
 
             'line_discount'   => 'nullable|array',
             'line_discount.*' => 'nullable|numeric|min:0|max:100',
@@ -446,14 +446,15 @@ class SaleController extends Controller
             }
 
             // c) availability check
-            foreach ($adjustments as $itemId => $delta) {
-                if ($delta < 0) {
-                    $item = Item::findOrFail($itemId);
-                    // if ($item->quantity < abs($delta)) {
-                    //     throw new \Exception(message: "Insufficient stock for {$item->name} ({$item->quantity} available)");
-                    // }
-                }
-            }
+            // Commented out to allow negative stock like in store method
+            // foreach ($adjustments as $itemId => $delta) {
+            //     if ($delta < 0) {
+            //         $item = Item::findOrFail($itemId);
+            //         if ($item->quantity < abs($delta)) {
+            //             throw new \Exception(message: "Insufficient stock for {$item->name} ({$item->quantity} available)");
+            //         }
+            //     }
+            // }
 
             // d) apply adjustments
             foreach ($adjustments as $itemId => $delta) {
