@@ -118,12 +118,12 @@
                             </td>
                             <td>
                                 <select name="price_id[]" class="form-select price-select" required onchange="updateRow(this)"
-                                        data-current-price-id="{{ $oi->price_id ?? '' }}">
+                                        data-current-price-type="{{ $oi->price_type ?? '' }}">
                                     <option value="" disabled>Select price type…</option>
                                     @if($oi->item && $oi->item->item_prices)
                                         @foreach($oi->item->item_prices as $price)
                                             <option value="{{ $price->id }}" 
-                                                    {{ $oi->price_id == $price->id ? 'selected' : '' }}
+                                                    {{ $oi->price_type == $price->name ? 'selected' : '' }}
                                                     data-price="{{ $price->price }}">
                                                 {{ $price->name }} (${{ number_format($price->price, 2) }})
                                             </option>
@@ -279,6 +279,7 @@
     
     // Remember the current selection
     const currentPriceId = priceSelect.value || priceSelect.dataset.currentPriceId;
+    const currentPriceType = priceSelect.dataset.currentPriceType;
     
     // Clear existing price options
     priceSelect.innerHTML = '<option value="" disabled>Select price type…</option>';
@@ -294,7 +295,8 @@
           option.dataset.price = price.price;
           
           // Restore selection if this was the previously selected price
-          if (currentPriceId && currentPriceId == price.id) {
+          if ((currentPriceId && currentPriceId == price.id) || 
+              (currentPriceType && currentPriceType == price.name)) {
             option.selected = true;
           }
           
@@ -304,7 +306,7 @@
     }
     
     // Only reset fields if no price was preserved
-    if (!currentPriceId) {
+    if (!currentPriceId && !currentPriceType) {
       row.querySelector('.unit-price').value = '';
       row.querySelector('.line-total').value = '0.00';
     }
