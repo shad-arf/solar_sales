@@ -58,6 +58,13 @@
                                     <br><small class="text-muted">Status: {{ $item->stock_status }}</small>
                                 </td>
                             </tr>
+                            <tr>
+                                <th>Times Purchased:</th>
+                                <td>
+                                    <strong class="text-danger">{{ $item->purchaseItems->count() ?? 0 }}</strong> orders
+                                    <br><small class="text-muted">Total: {{ $item->purchaseItems->sum('quantity_purchased') ?? 0 }} units</small>
+                                </td>
+                            </tr>
                         </table>
                     </div>
                     <div class="col-md-6">
@@ -241,6 +248,62 @@
             </div>
         </div>
         @endif
+
+        <!-- Purchase History Card -->
+        @if($item->purchaseItems->count() > 0)
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-box-arrow-in-down"></i> Purchase History
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Purchase Order</th>
+                                <th>Supplier</th>
+                                <th>Quantity</th>
+                                <th>Unit Cost</th>
+                                <th class="text-end">Total Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($item->purchaseItems->sortByDesc('created_at')->take(10) as $purchaseItem)
+                            <tr>
+                                <td>{{ $purchaseItem->purchase->purchase_date->format('M d, Y') }}</td>
+                                <td>
+                                    <a href="{{ route('purchases.show', $purchaseItem->purchase) }}" class="text-decoration-none">
+                                        {{ $purchaseItem->purchase->purchase_number }}
+                                    </a>
+                                </td>
+                                <td>{{ $purchaseItem->purchase->supplier->name ?? 'Unknown Supplier' }}</td>
+                                <td>{{ $purchaseItem->quantity_purchased }}</td>
+                                <td>${{ number_format($purchaseItem->purchase_price, 2) }}</td>
+                                <td class="text-end">${{ number_format($purchaseItem->line_total, 2) }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-success">
+                                <th colspan="3">Total Purchased</th>
+                                <th>{{ $item->purchaseItems->sum('quantity_purchased') }} units</th>
+                                <th>-</th>
+                                <th class="text-end">${{ number_format($item->purchaseItems->sum('line_total'), 2) }}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                @if($item->purchaseItems->count() > 10)
+                    <div class="text-center mt-2">
+                        <small class="text-muted">Showing latest 10 purchases. Total {{ $item->purchaseItems->count() }} purchases recorded.</small>
+                    </div>
+                @endif
+            </div>
+        </div>
+        @endif
     </div>
 
     <!-- Sidebar -->
@@ -253,12 +316,12 @@
             <div class="card-body">
                 <div class="row text-center">
                     <div class="col-6 border-end">
-                        <h4 class="text-primary">{{ $item->orderItems->sum('quantity') }}</h4>
-                        <small class="text-muted">Total Sold</small>
+                        <h4 class="text-danger">{{ $item->purchaseItems->sum('quantity_purchased') ?? 0 }}</h4>
+                        <small class="text-muted">Total Purchased</small>
                     </div>
                     <div class="col-6">
-                        <h4 class="text-success">${{ number_format($item->orderItems->sum('line_total'), 2) }}</h4>
-                        <small class="text-muted">Revenue</small>
+                        <h4 class="text-primary">{{ $item->orderItems->sum('quantity') }}</h4>
+                        <small class="text-muted">Total Sold</small>
                     </div>
                 </div>
                 <hr>
@@ -268,8 +331,24 @@
                         <small class="text-muted">In Stock</small>
                     </div>
                     <div class="col-6">
-                        <h5 class="text-warning">${{ number_format($item->total_value, 2) }}</h5>
-                        <small class="text-muted">Stock Value</small>
+                        <h5 class="text-success">${{ number_format($item->orderItems->sum('line_total'), 2) }}</h5>
+                        <small class="text-muted">Revenue</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-6 border-end">
+                        <h6 class="text-warning">${{ number_format($item->purchaseItems->sum('line_total') ?? 0, 2) }}</h6>
+                        <small class="text-muted">Total Cost</small>
+                    </div>
+                    <div class="col-6">
+                        @php
+                            $totalCost = $item->purchaseItems->sum('line_total') ?? 0;
+                            $totalRevenue = $item->orderItems->sum('line_total');
+                            $profit = $totalRevenue - $totalCost;
+                        @endphp
+                        <h6 class="text-{{ $profit >= 0 ? 'success' : 'danger' }}">${{ number_format($profit, 2) }}</h6>
+                        <small class="text-muted">Profit/Loss</small>
                     </div>
                 </div>
             </div>

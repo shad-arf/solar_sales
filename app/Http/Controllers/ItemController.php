@@ -380,7 +380,7 @@ class ItemController extends Controller
     public function show(Item $item)
     {
         // Load order items with their sales and customers
-        $item->load(['orderItems.sale.customer']);
+        $item->load(['orderItems.sale.customer', 'purchaseItems.purchase.supplier']);
 
         // Calculate sales statistics
         $salesStats = [
@@ -390,7 +390,15 @@ class ItemController extends Controller
             'last_sale_date' => $item->orderItems->max('created_at')
         ];
 
-        return view('items.show', compact('item', 'salesStats'));
+        // Calculate purchase statistics
+        $purchaseStats = [
+            'total_purchased' => $item->purchaseItems->sum('quantity_purchased'),
+            'total_cost' => $item->purchaseItems->sum('line_total'),
+            'avg_purchase_price' => $item->purchaseItems->avg('purchase_price'),
+            'last_purchase_date' => $item->purchaseItems->max('created_at')
+        ];
+
+        return view('items.show', compact('item', 'salesStats', 'purchaseStats'));
     }
 
     public function edit(Item $item)

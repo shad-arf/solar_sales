@@ -30,6 +30,11 @@ class Item extends Model
         return $this->hasMany(Order::class);
     }
 
+    public function purchaseItems()
+    {
+        return $this->hasMany(PurchaseItem::class);
+    }
+
     /**
      * Get all prices for this item
      */
