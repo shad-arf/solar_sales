@@ -61,9 +61,10 @@
                     <img src="{{ asset('images/logo.jpg') }}" alt="Company Logo" style="max-width: 150px;" crossorigin="anonymous">
                 </td>
                 <td style="vertical-align: top; text-align: right; width: 50%; border: none;">
-                    <h2>Tavyar</h2>
-                    <p>Main Street Mosul, Kahabt</p>
-                    <p>Phone: (964) 7709647036</p>
+                    <h2>{{ env('COMPANY_NAME', 'Hostyar') }}</h2>
+                    <p>{{ env('ADDRESS', '') }}</p>
+                    <p>{{ env('STREET_NAME', '') }}, {{ env('ADDRESS', '') }}</p>
+                    <p>Phone: {{ env('PHONE', '') }}</p>
                 </td>
             </tr>
         </table>
@@ -79,12 +80,12 @@
             <tr>
                 <td style="vertical-align: top; width: 50%; border: none;">
                     <h5>From:</h5>
-                    <strong>Tavyar</strong><br>
-                    Main Street Mosul<br>
-                    Kahabt<br>
-                    Phone: (964) 7709647036<br>
-                    Email: info@yourcompany.com
-                </td>
+                    <strong>{{ env('COMPANY_NAME', 'Hostyar') }}</strong><br>
+                         <strong>{{ env('COMPANY_NAME', 'Hostyar') }}</strong><br>
+                        {{ env('STREET_NAME', '') }}<br>
+                        Phone: {{ env('PHONE', '') }}<br>
+                        Email: {{ env('EMAIL', '') }}
+            </td>
                 <td style="vertical-align: top; text-align: right; width: 50%; border: none;">
                     <h5>Bill To:</h5>
                     <strong>{{ $sale->customer->name ?? '— Deleted Customer —' }}</strong><br>

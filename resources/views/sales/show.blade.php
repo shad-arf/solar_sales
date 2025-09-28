@@ -40,11 +40,10 @@
         <div class="row mb-4">
             <div class="col-sm-6">
                 <h5>From:</h5>
-                <strong>Tavyar</strong><br>
-                Main Street Mosul<br>
-                Kahabt<br>
-                Phone: (964) 7709647036<br>
-                Email: info@yourcompany.com
+                <strong>{{ env('COMPANY_NAME', 'Hostyar') }}</strong><br>
+                {{ env('STREET_NAME', '') }}<br>
+                Phone: {{ env('PHONE', '') }}<br>
+                Email: {{ env('EMAIL', '') }}
             </div>
             <div class="col-sm-6 text-sm-end">
                 <h5>Bill To:</h5>
