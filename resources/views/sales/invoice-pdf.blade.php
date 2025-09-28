@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Invoice #{{ $sale->code }} - Solar Sales</title>
+    <title>Invoice #{{ $sale->code }} -  {{ env('BUSINESS_NAME') }}</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/jpeg" href="{{ asset('images/logo.jpg') }}">

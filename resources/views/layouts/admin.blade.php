@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Solar Sales Management System</title>
-    
+    <title> {{ env('BUSINESS_NAME') }}</title>
+
     <!-- Favicon -->
     <link rel="icon" type="image/jpeg" href="{{ asset('images/logo.jpg') }}">
     <link rel="shortcut icon" type="image/jpeg" href="{{ asset('images/logo.jpg') }}">
     <link rel="apple-touch-icon" href="{{ asset('images/logo.jpg') }}">
-    
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
@@ -136,17 +136,17 @@
             .main-content {
                 padding: 15px;
             }
-            
+
             #sidebar {
                 width: 280px;
                 left: -280px;
             }
-            
+
             .sidebar-menu li a {
                 padding: 12px 15px;
                 font-size: 14px;
             }
-            
+
             .sidebar-menu li a small {
                 font-size: 10px;
                 display: block;
@@ -181,7 +181,7 @@
             <button class="menu-toggle" id="menuToggle">
                 <i class="bi bi-list"></i>
             </button>
-            <span class="ms-3 fw-bold">Solar Sales</span>
+            <span class="ms-3 fw-bold">{{ env('BUSINESS_NAME') }}</span>
         </div>
         <div class="user-dropdown dropdown">
             <a class="text-white text-decoration-none dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -226,7 +226,7 @@
                     <i class="bi bi-plus-circle"></i>Add New Item
                 </a>
             </li>
-        
+
             <li>
                 <a href="{{ route('items.lowStock') }}" class="{{ request()->is('items/status/low-stock') ? 'active' : '' }}">
                     <i class="bi bi-exclamation-triangle"></i>Low Stock Items
@@ -357,7 +357,7 @@
                     <i class="bi bi-graph-up"></i>Income Statement
                 </a>
             </li>
-            
+
             <!-- Quick Actions -->
             <li class="menu-header">
                 <span>Quick Actions</span>

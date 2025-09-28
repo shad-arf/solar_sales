@@ -4,8 +4,8 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>Solar Sales Management System</title>
-        
+        <title> {{ env('BUSINESS_NAME') }}</title>
+
         <!-- Favicon -->
         <link rel="icon" type="image/jpeg" href="{{ asset('images/logo.jpg') }}">
         <link rel="shortcut icon" type="image/jpeg" href="{{ asset('images/logo.jpg') }}">
