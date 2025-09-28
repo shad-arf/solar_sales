@@ -78,26 +78,21 @@
 
     {{-- Invoice Content --}}
     <div id="invoice-wrapper" class="invoice-wrapper">
-        {{-- Logo & Company Info --}}
-        <table style="width: 100%; margin-bottom: 20px; border: none;">
+        {{-- Logo & Invoice Heading --}}
+        <table style="width: 100%; margin-bottom: 30px; border: none;">
             <tr>
-                <td style="vertical-align: top; width: 50%; border: none;">
-                    <img src="{{ asset('images/logo.jpg') }}" alt="Company Logo" style="max-width: 150px;" crossorigin="anonymous">
+                <td style="vertical-align: top; width: 25%; border: none;">
+                    <img src="{{ asset('images/logo.jpg') }}" alt="Company Logo" style="max-width: 120px;" crossorigin="anonymous">
                 </td>
-                <td style="vertical-align: top; text-align: right; width: 50%; border: none;">
-                    <h2>{{ env('COMPANY_NAME', 'Hostyar') }}</h2>
-                    <p>{{ env('ADDRESS', '') }}</p>
-                    <p>{{ env('STREET_NAME', '') }}, {{ env('ADDRESS', '') }}</p>
-                    <p>Phone: {{ env('PHONE', '') }}</p>
+                <td style="vertical-align: top; text-align: center; width: 50%; border: none;">
+                    <h1>INVOICE</h1>
+                    <p class="text-muted">Invoice #{{ $sale->code }}</p>
+                </td>
+                <td style="vertical-align: top; width: 25%; border: none;">
+                    <!-- Empty space for balance -->
                 </td>
             </tr>
         </table>
-
-        {{-- Invoice Heading --}}
-        <div class="text-center mb-4">
-            <h1>INVOICE</h1>
-            <p class="text-muted">Invoice #{{ $sale->code }}</p>
-        </div>
 
         {{-- From / Bill To --}}
         <table style="width: 100%; margin-bottom: 20px; border: none;">
@@ -105,10 +100,9 @@
                 <td style="vertical-align: top; width: 50%; border: none;">
                     <h5>From:</h5>
                     <strong>{{ env('COMPANY_NAME', 'Hostyar') }}</strong><br>
-                         <strong>{{ env('COMPANY_NAME', 'Hostyar') }}</strong><br>
-                        {{ env('STREET_NAME', '') }}<br>
-                        Phone: {{ env('PHONE', '') }}<br>
-                        Email: {{ env('EMAIL', '') }}
+                    {{ env('STREET_NAME', '') }}<br>
+                    Phone: {{ env('PHONE', '') }}<br>
+                    Email: {{ env('EMAIL', '') }}
             </td>
                 <td style="vertical-align: top; text-align: right; width: 50%; border: none;">
                     <h5>Bill To:</h5>
