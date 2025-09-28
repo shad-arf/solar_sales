@@ -69,7 +69,8 @@
                     @foreach(old('item_id') as $key => $oldItemId)
                         <tr class="item-row">
                             <td>
-                                <select name="item_id[]" class="form-select item-select" required onchange="updateItemOptions(this)">
+                                <input type="text" class="form-control item-search" placeholder="Search items..." autocomplete="off">
+                                <select name="item_id[]" class="form-select item-select" required onchange="updateItemOptions(this)" style="display: none;">
                                     <option value="" disabled>Select…</option>
                                     @foreach($items as $itm)
                                         <option value="{{ $itm->id }}" {{ $oldItemId == $itm->id ? 'selected' : '' }}>
@@ -77,6 +78,7 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                <div class="search-results" style="display: none; position: absolute; background: white; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto; z-index: 1000; width: 100%;"></div>
                             </td>
                             <td>
                                 <select name="price_id[]" class="form-select price-select" required onchange="updateRow(this)">
@@ -180,12 +182,14 @@
   <tbody>
     <tr id="item-row-template">
       <td>
-        <select name="item_id[]" class="form-select item-select" required onchange="updateItemOptions(this)">
+        <input type="text" class="form-control item-search" placeholder="Search items..." autocomplete="off">
+        <select name="item_id[]" class="form-select item-select" required onchange="updateItemOptions(this)" style="display: none;">
           <option value="" disabled selected>Select…</option>
           @foreach($items as $itm)
             <option value="{{ $itm->id }}">{{ $itm->name }}</option>
           @endforeach
         </select>
+        <div class="search-results" style="display: none; position: absolute; background: white; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto; z-index: 1000; width: 100%;"></div>
       </td>
       <td>
         <select name="price_id[]" class="form-select price-select" required onchange="updateRow(this)">
@@ -228,6 +232,85 @@
     row.classList.add('item-row');
     row.style.display = '';
     document.getElementById('items-body').appendChild(row);
+    
+    // Initialize search functionality for the new row
+    initializeItemSearch(row);
+  }
+
+  function initializeItemSearch(row) {
+    const searchInput = row.querySelector('.item-search');
+    const select = row.querySelector('.item-select');
+    const resultsDiv = row.querySelector('.search-results');
+    
+    searchInput.addEventListener('input', function() {
+      const query = this.value.toLowerCase();
+      
+      if (query.length < 1) {
+        resultsDiv.style.display = 'none';
+        return;
+      }
+      
+      // Filter items based on search query
+      const filteredItems = Object.values(itemsData).filter(item => 
+        item.name.toLowerCase().includes(query)
+      );
+      
+      if (filteredItems.length > 0) {
+        resultsDiv.innerHTML = '';
+        filteredItems.slice(0, 10).forEach(item => { // Limit to 10 results
+          const div = document.createElement('div');
+          div.style.cssText = 'padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee;';
+          div.textContent = item.name;
+          div.addEventListener('mouseenter', () => div.style.backgroundColor = '#f8f9fa');
+          div.addEventListener('mouseleave', () => div.style.backgroundColor = 'white');
+          div.addEventListener('click', () => {
+            searchInput.value = item.name;
+            select.value = item.id;
+            resultsDiv.style.display = 'none';
+            updateItemOptions(select);
+          });
+          resultsDiv.appendChild(div);
+        });
+        resultsDiv.style.display = 'block';
+      } else {
+        resultsDiv.innerHTML = '<div style="padding: 8px 12px; color: #999;">No items found</div>';
+        resultsDiv.style.display = 'block';
+      }
+    });
+    
+    // Hide results when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!row.contains(e.target)) {
+        resultsDiv.style.display = 'none';
+      }
+    });
+    
+    // Handle keyboard navigation
+    searchInput.addEventListener('keydown', function(e) {
+      const items = resultsDiv.querySelectorAll('div');
+      let currentIndex = Array.from(items).findIndex(item => item.style.backgroundColor === 'rgb(248, 249, 250)');
+      
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (currentIndex < items.length - 1) {
+          if (currentIndex >= 0) items[currentIndex].style.backgroundColor = 'white';
+          items[currentIndex + 1].style.backgroundColor = '#f8f9fa';
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (currentIndex > 0) {
+          items[currentIndex].style.backgroundColor = 'white';
+          items[currentIndex - 1].style.backgroundColor = '#f8f9fa';
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (currentIndex >= 0) {
+          items[currentIndex].click();
+        }
+      } else if (e.key === 'Escape') {
+        resultsDiv.style.display = 'none';
+      }
+    });
   }
 
   function removeRow(btn) {
@@ -339,8 +422,17 @@
       addItemRow();
     } else {
       // Initialize existing rows
-      document.querySelectorAll('.item-select').forEach(el => {
-        if (el.value) updateItemOptions(el);
+      document.querySelectorAll('.item-row').forEach(row => {
+        initializeItemSearch(row);
+        const select = row.querySelector('.item-select');
+        if (select.value) {
+          const searchInput = row.querySelector('.item-search');
+          const selectedOption = select.selectedOptions[0];
+          if (selectedOption) {
+            searchInput.value = selectedOption.textContent;
+          }
+          updateItemOptions(select);
+        }
       });
     }
     

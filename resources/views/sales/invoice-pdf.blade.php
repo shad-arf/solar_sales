@@ -11,9 +11,10 @@
     <style>
         body {
             font-family: DejaVu Sans, sans-serif;
-            font-size: 12px;
-            padding: 30px;
+            font-size: 24px;
+            padding: 25px;
             color: #000;
+            line-height: 1.5;
         }
         .invoice-wrapper {
             background: white;
@@ -25,6 +26,18 @@
         h1, h2, h5 {
             margin: 0;
         }
+        h1 {
+            font-size: 42px;
+            font-weight: bold;
+        }
+        h2 {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        h5 {
+            font-size: 26px;
+            font-weight: bold;
+        }
         table {
             border-collapse: collapse;
             width: 100%;
@@ -32,12 +45,23 @@
         }
         th, td {
             border: 1px solid #000;
-            padding: 6px;
+            padding: 15px;
             text-align: left;
+            font-size: 22px;
+            line-height: 1.4;
         }
         .text-center { text-align: center; }
         .text-end { text-align: right; }
         .text-muted { color: #777; }
+        p {
+            font-size: 22px;
+            line-height: 1.5;
+            margin: 10px 0;
+        }
+        strong {
+            font-weight: bold;
+            font-size: 23px;
+        }
         .borderless td { border: none !important; }
         /* ensure right-to-left support if needed */
         [dir="rtl"] { direction: rtl; }
