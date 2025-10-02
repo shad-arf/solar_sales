@@ -546,7 +546,10 @@
                         <small class="text-muted">Recent Transactions:</small>
                         @foreach($ownerEquity['recent_transactions']->take(3) as $transaction)
                             <div class="d-flex justify-content-between mt-1">
-                                <small>{{ $transaction->transaction_date->format('M d') }}</small>
+                                <small>
+                                    {{ $transaction->transaction_date->format('M d') }}
+                                    <br><span class="text-muted">{{ $transaction->owner_name }}</span>
+                                </small>
                                 <small class="{{ $transaction->type == 'investment' ? 'text-success' : 'text-danger' }}">
                                     ${{ number_format($transaction->amount, 0) }}
                                 </small>
@@ -726,6 +729,23 @@
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <small><strong>Note:</strong> Owner investments increase cash balance and net worth. Owner drawings decrease cash balance and net worth.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="owner_id" class="form-label">Owner/Investor <span class="text-danger">*</span></label>
+                        <select class="form-control" id="owner_id" name="owner_id" required>
+                            <option value="">Select Owner</option>
+                            @foreach($owners as $owner)
+                                <option value="{{ $owner->id }}">
+                                    {{ $owner->name }} ({{ $owner->ownership_display }})
+                                </option>
+                            @endforeach
+                        </select>
+                        @if($owners->count() == 0)
+                            <div class="form-text text-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                No owners found. <a href="{{ route('owners.create') }}" target="_blank">Add an owner first</a>
+                            </div>
+                        @endif
                     </div>
                     <div class="mb-3">
                         <label for="type" class="form-label">Transaction Type</label>

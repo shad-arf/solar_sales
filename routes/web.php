@@ -13,6 +13,10 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\ItemSaleController;
 use App\Http\Controllers\InventoryAdjustmentController;
+use App\Http\Controllers\AccountController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\VersionNotificationController;
+use App\Http\Controllers\OwnerController;
 
 
 Route::get('register', [AuthController::class, 'showRegisterForm'])->name('register.form');
@@ -85,6 +89,19 @@ Route::middleware('auth')->group(function () {
     Route::resource('income', IncomeController::class);
     Route::resource('expenses', ExpenseController::class);
     Route::resource('transactions', TransactionController::class);
+    
+    // Accounts
+    Route::resource('accounts', AccountController::class);
+    Route::post('/accounts/{account}/toggle-status', [AccountController::class, 'toggleStatus'])->name('accounts.toggleStatus');
+
+    // Categories
+    Route::resource('categories', CategoryController::class);
+    Route::post('/categories/{category}/toggle-status', [CategoryController::class, 'toggleStatus'])->name('categories.toggleStatus');
+
+    // Owners
+    Route::resource('owners', OwnerController::class);
+    Route::post('/owners/{owner}/toggle-status', [OwnerController::class, 'toggleStatus'])->name('owners.toggleStatus');
+    Route::get('/owners/{owner}/equity', [OwnerController::class, 'equity'])->name('owners.equity');
 
     // Item Sales (Profit/Loss Tracking)
     Route::resource('item-sales', ItemSaleController::class);
@@ -92,6 +109,23 @@ Route::middleware('auth')->group(function () {
     // Inventory Adjustments
     Route::resource('inventory-adjustments', InventoryAdjustmentController::class);
     Route::post('/inventory-adjustments/quick-adjust', [InventoryAdjustmentController::class, 'quickAdjust'])->name('inventory-adjustments.quick-adjust');
+
+    // Version Notifications
+    Route::get('/version-notifications', [VersionNotificationController::class, 'index'])->name('version-notifications.index');
+    Route::get('/version-notifications/check', [VersionNotificationController::class, 'checkPendingNotifications'])->name('version-notifications.check');
+    Route::post('/version-notifications/mark-viewed', [VersionNotificationController::class, 'markAsViewed'])->name('version-notifications.mark-viewed');
+    Route::post('/version-notifications/dismiss', [VersionNotificationController::class, 'dismiss'])->name('version-notifications.dismiss');
+    Route::post('/version-notifications/dismiss-all', [VersionNotificationController::class, 'dismissAll'])->name('version-notifications.dismiss-all');
+    
+    // Version Notifications Admin
+    Route::get('/admin/version-notifications', [VersionNotificationController::class, 'admin'])->name('version-notifications.admin');
+    Route::get('/admin/version-notifications/create', [VersionNotificationController::class, 'create'])->name('version-notifications.create');
+    Route::post('/admin/version-notifications', [VersionNotificationController::class, 'store'])->name('version-notifications.store');
+    Route::get('/admin/version-notifications/{versionNotification}', [VersionNotificationController::class, 'show'])->name('version-notifications.show');
+    Route::get('/admin/version-notifications/{versionNotification}/edit', [VersionNotificationController::class, 'edit'])->name('version-notifications.edit');
+    Route::put('/admin/version-notifications/{versionNotification}', [VersionNotificationController::class, 'update'])->name('version-notifications.update');
+    Route::delete('/admin/version-notifications/{versionNotification}', [VersionNotificationController::class, 'destroy'])->name('version-notifications.destroy');
+    Route::post('/admin/version-notifications/{versionNotification}/toggle-status', [VersionNotificationController::class, 'toggleStatus'])->name('version-notifications.toggle-status');
 });
 
 // Authenticated admin routes

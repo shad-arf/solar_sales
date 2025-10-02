@@ -222,7 +222,7 @@
         Showing {{ $suppliers->firstItem() ?? 0 }} to {{ $suppliers->lastItem() ?? 0 }} of {{ $suppliers->total() }} results
     </div>
     <div>
-        {{ $suppliers->appends(request()->query())->links() }}
+        {{ $suppliers->appends(request()->query())->links('pagination.bootstrap-5') }}
     </div>
 </div>
 

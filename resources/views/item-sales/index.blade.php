@@ -73,7 +73,7 @@
             </table>
         </div>
 
-        {{ $sales->links() }}
+        {{ $sales->links('pagination.bootstrap-5') }}
     </div>
 </div>
 @endsection

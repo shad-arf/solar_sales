@@ -12,6 +12,7 @@ class OwnerEquity extends Model
     protected $table = 'owner_equity';
 
     protected $fillable = [
+        'owner_id',
         'type',
         'amount',
         'description',
@@ -52,5 +53,20 @@ class OwnerEquity extends Model
     public static function getNetEquity()
     {
         return self::getTotalInvestments() - self::getTotalDrawings();
+    }
+
+    public function owner()
+    {
+        return $this->belongsTo(Owner::class);
+    }
+
+    public function getOwnerNameAttribute()
+    {
+        if ($this->owner) {
+            return $this->owner->name;
+        }
+        
+        // Fallback for legacy records without owner
+        return 'Unknown Owner';
     }
 }

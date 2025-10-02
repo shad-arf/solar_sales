@@ -14,6 +14,7 @@ class Income extends Model
         'amount',
         'description',
         'category',
+        'category_id',
         'date',
         'reference_number'
     ];
@@ -50,5 +51,20 @@ class Income extends Model
     public static function getTotalThisYear()
     {
         return self::thisYear()->sum('amount') ?: 0;
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function getCategoryNameAttribute()
+    {
+        if ($this->category_id && $this->category) {
+            return $this->category->name;
+        }
+        
+        // Fallback to legacy category constant
+        return self::CATEGORIES[$this->category] ?? $this->category;
     }
 }

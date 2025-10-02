@@ -62,18 +62,23 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="category" class="form-label">Category <span class="text-danger">*</span></label>
-                                    <select class="form-control @error('category') is-invalid @enderror" id="category" name="category" required>
+                                    <label for="category_id" class="form-label">Category <span class="text-danger">*</span></label>
+                                    <select class="form-control @error('category_id') is-invalid @enderror" id="category_id" name="category_id" required>
                                         <option value="">Select Category</option>
-                                        @foreach(\App\Models\Expense::CATEGORIES as $key => $name)
-                                            <option value="{{ $key }}" {{ old('category', $expense->category) == $key ? 'selected' : '' }}>
-                                                {{ $name }}
+                                        @foreach($categories as $category)
+                                            <option value="{{ $category->id }}" {{ old('category_id', $expense->category_id) == $category->id ? 'selected' : '' }}>
+                                                {{ $category->name }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    @error('category')
+                                    @error('category_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
+                                    <div class="form-text">
+                                        <i class="bi bi-info-circle"></i> 
+                                        Don't see the category you need? 
+                                        <a href="{{ route('categories.create') }}" target="_blank">Add a new category</a>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -116,7 +121,7 @@
                     <div class="mb-3">
                         <label class="form-label text-muted">Current Category</label>
                         <p class="fw-bold">
-                            <span class="badge bg-danger">{{ \App\Models\Expense::CATEGORIES[$expense->category] ?? $expense->category }}</span>
+                            <span class="badge bg-danger">{{ $expense->category ? $expense->category->name : 'No category' }}</span>
                         </p>
                     </div>
 
@@ -132,11 +137,18 @@
                     <h5 class="card-title mb-0">Expense Categories</h5>
                 </div>
                 <div class="card-body">
-                    @foreach(\App\Models\Expense::CATEGORIES as $key => $name)
-                        <div class="mb-2">
-                            <span class="badge bg-danger">{{ $name }}</span>
-                        </div>
-                    @endforeach
+                    @if($categories->count() > 0)
+                        @foreach($categories as $category)
+                            <div class="mb-2">
+                                <span class="badge bg-danger">{{ $category->name }}</span>
+                            </div>
+                        @endforeach
+                    @else
+                        <p class="text-muted">No categories available.</p>
+                        <a href="{{ route('categories.create') }}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-plus"></i> Create First Category
+                        </a>
+                    @endif
                 </div>
             </div>
         </div>

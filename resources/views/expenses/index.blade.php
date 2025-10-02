@@ -39,7 +39,7 @@
                                     <td>{{ $expense->description }}</td>
                                     <td>
                                         <span class="badge bg-danger">
-                                            {{ \App\Models\Expense::CATEGORIES[$expense->category] ?? $expense->category }}
+                                            {{ $expense->category_name }}
                                         </span>
                                     </td>
                                     <td>
@@ -81,7 +81,7 @@
                 <!-- Pagination -->
                 @if($expenses->hasPages())
                     <div class="d-flex justify-content-center mt-4">
-                        {{ $expenses->links() }}
+                        {{ $expenses->links('pagination.bootstrap-5') }}
                     </div>
                 @endif
             @endif

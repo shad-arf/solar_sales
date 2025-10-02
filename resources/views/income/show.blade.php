@@ -52,7 +52,7 @@
                             <div class="mb-3">
                                 <label class="form-label text-muted">Category</label>
                                 <p class="fw-bold">
-                                    <span class="badge bg-success fs-6">{{ \App\Models\Income::CATEGORIES[$income->category] ?? $income->category }}</span>
+                                    <span class="badge bg-success fs-6">{{ $income->category_name }}</span>
                                 </p>
                             </div>
                         </div>
@@ -94,7 +94,7 @@
                         <i class="bi bi-cash-stack fs-1"></i>
                     </div>
                     <h3 class="text-success">${{ number_format($income->amount, 2) }}</h3>
-                    <p class="text-muted">{{ \App\Models\Income::CATEGORIES[$income->category] ?? $income->category }}</p>
+                    <p class="text-muted">{{ $income->category_name }}</p>
                     <hr>
                     <small class="text-muted">
                         Recorded on {{ $income->date->format('M d, Y') }}

@@ -469,7 +469,7 @@
         Showing {{ $customers->firstItem() ?? 0 }} to {{ $customers->lastItem() ?? 0 }} of {{ $customers->total() }} results
     </div>
     <div>
-        {{ $customers->appends(request()->query())->links() }}
+        {{ $customers->appends(request()->query())->links('pagination.bootstrap-5') }}
     </div>
 </div>
 

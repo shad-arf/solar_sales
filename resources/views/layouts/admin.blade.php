@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title> {{ env('BUSINESS_NAME') }}</title>
 
     <!-- Favicon -->
@@ -106,6 +107,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1001;
         }
 
         .menu-toggle {
@@ -305,8 +309,38 @@
                 </a>
             </li>
             <li>
-                <a href="{{ route('transactions.index') }}" class="{{ request()->is('transactions*') ? 'active' : '' }}">
+                <a href="{{ route('transactions.index') }}" class="{{ request()->is('transactions*') && !request()->is('transactions/create') ? 'active' : '' }}">
                     <i class="bi bi-arrow-left-right"></i>All Transactions
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('accounts.index') }}" class="{{ request()->is('accounts*') && !request()->is('accounts/create') ? 'active' : '' }}">
+                    <i class="bi bi-bank"></i>Chart of Accounts
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('accounts.create') }}" class="{{ request()->is('accounts/create') ? 'active' : '' }}">
+                    <i class="bi bi-plus-circle"></i>Add Account
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('categories.index') }}" class="{{ request()->is('categories*') && !request()->is('categories/create') ? 'active' : '' }}">
+                    <i class="bi bi-tags"></i>Categories
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('categories.create') }}" class="{{ request()->is('categories/create') ? 'active' : '' }}">
+                    <i class="bi bi-plus-circle"></i>Add Category
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('owners.index') }}" class="{{ request()->is('owners*') && !request()->is('owners/create') ? 'active' : '' }}">
+                    <i class="bi bi-people"></i>Owner Management
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('owners.create') }}" class="{{ request()->is('owners/create') ? 'active' : '' }}">
+                    <i class="bi bi-person-plus"></i>Add Owner
                 </a>
             </li>
 
@@ -336,42 +370,18 @@
                     @if(!Route::has('users.index'))<small class="text-warning ms-1">(Coming Soon)</small>@endif
                 </a>
             </li>
+         @if((auth()->user()->role)=='admin')
+            <li>
+                <a href="{{ route('version-notifications.admin') }}" class="{{ request()->is('admin/version-notifications*') ? 'active' : '' }}">
+                    <i class="bi bi-bell-fill"></i>Version Notifications
+                </a>
+            </li>
+         @endif
             @endif
 
             <!-- Reports & Export -->
-            <li class="menu-header">
-                <span>Reports & Analytics</span>
-            </li>
-            <li>
-                <a href="{{ route('dashboard') }}#financial-statements" class="{{ request()->is('reports/financial*') ? 'active' : '' }}">
-                    <i class="bi bi-file-earmark-text"></i>Financial Report
-                </a>
-            </li>
-            <li>
-                <a href="{{ route('dashboard') }}#balance-sheet" class="{{ request()->is('reports/balance-sheet*') ? 'active' : '' }}">
-                    <i class="bi bi-pie-chart"></i>Balance Sheet
-                </a>
-            </li>
-            <li>
-                <a href="{{ route('dashboard') }}#income-statement" class="{{ request()->is('reports/income*') ? 'active' : '' }}">
-                    <i class="bi bi-graph-up"></i>Income Statement
-                </a>
-            </li>
 
-            <!-- Quick Actions -->
-            <li class="menu-header">
-                <span>Quick Actions</span>
-            </li>
-            <li>
-                <a href="#" onclick="window.print()" class="">
-                    <i class="bi bi-printer"></i>Print Current Page
-                </a>
-            </li>
-            <li>
-                <a href="{{ route('dashboard') }}" class="">
-                    <i class="bi bi-arrow-clockwise"></i>Refresh Dashboard
-                </a>
-            </li>
+
         </ul>
     </div>
 
@@ -395,6 +405,11 @@
 
     @yield('content')
 </div>
+
+<!-- Version Notification Popup -->
+@auth
+    @include('version-notifications.popup')
+@endauth
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>

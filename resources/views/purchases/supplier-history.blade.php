@@ -190,7 +190,7 @@
                     Showing {{ $purchases->firstItem() ?? 0 }} to {{ $purchases->lastItem() ?? 0 }} of {{ $purchases->total() }} results
                 </div>
                 <div>
-                    {{ $purchases->links() }}
+                    {{ $purchases->links('pagination.bootstrap-5') }}
                 </div>
             </div>
         @else

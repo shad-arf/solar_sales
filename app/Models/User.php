@@ -47,4 +47,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function versionNotifications()
+    {
+        return $this->hasMany(UserVersionNotification::class);
+    }
 }

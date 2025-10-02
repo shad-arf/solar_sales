@@ -75,7 +75,7 @@
                                     <label class="form-label">Price Amount</label>
                                     <div class="input-group">
                                         <span class="input-group-text">$</span>
-                                        <input type="number" name="pricing[0][price]" value="{{ old('pricing.0.price') }}" step="0.01" min="0" class="form-control pricing-amount" placeholder="0.00" required>
+                                        <input name="pricing[0][price]" value="{{ old('pricing.0.price') }}" step="0.01" min="0" class="form-control pricing-amount" placeholder="0.00" required>
                                     </div>
                                 </div>
                                 <div class="col-md-2">
@@ -108,7 +108,7 @@
                                     <label class="form-label">Price Amount</label>
                                     <div class="input-group">
                                         <span class="input-group-text">$</span>
-                                        <input type="number" name="pricing[1][price]" value="{{ old('pricing.1.price') }}" step="0.01" min="0" class="form-control pricing-amount" placeholder="0.00">
+                                        <input name="pricing[1][price]" value="{{ old('pricing.1.price') }}" step="0.01" min="0" class="form-control pricing-amount" placeholder="0.00">
                                     </div>
                                 </div>
                                 <div class="col-md-2">
@@ -141,7 +141,7 @@
                                     <label class="form-label">Price Amount</label>
                                     <div class="input-group">
                                         <span class="input-group-text">$</span>
-                                        <input type="number" name="pricing[2][price]" value="{{ old('pricing.2.price') }}" step="0.01" min="0" class="form-control pricing-amount" placeholder="0.00">
+                                        <inputname="pricing[2][price]" value="{{ old('pricing.2.price') }}" step="0.01" min="0" class="form-control pricing-amount" placeholder="0.00">
                                     </div>
                                 </div>
                                 <div class="col-md-2">
@@ -196,11 +196,11 @@
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label">Cost Price</label>
-                    <input type="number" id="helperCost" class="form-control" step="0.01" placeholder="0.00">
+                    <input  id="helperCost" class="form-control" step="0.01" placeholder="0.00">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Markup Percentage</label>
-                    <input type="number" id="helperMarkup" class="form-control" step="1" placeholder="25" value="25">
+                    <input  id="helperMarkup" class="form-control" step="1" placeholder="25" value="25">
                     <div class="form-text">Recommended: 20-30%</div>
                 </div>
                 <div class="mb-3">
@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <label class="form-label">Price Amount</label>
                     <div class="input-group">
                         <span class="input-group-text">$</span>
-                        <input type="number" name="pricing[${pricingRowIndex}][price]" step="0.01" min="0" class="form-control pricing-amount" placeholder="0.00">
+                        <input  name="pricing[${pricingRowIndex}][price]" step="0.01" min="0" class="form-control pricing-amount" placeholder="0.00">
                     </div>
                 </div>
                 <div class="col-md-2">

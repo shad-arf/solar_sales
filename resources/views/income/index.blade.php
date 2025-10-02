@@ -39,7 +39,7 @@
                                     <td>{{ $income->description }}</td>
                                     <td>
                                         <span class="badge bg-success">
-                                            {{ \App\Models\Income::CATEGORIES[$income->category] ?? $income->category }}
+                                            {{ $income->category_name }}
                                         </span>
                                     </td>
                                     <td>
@@ -81,7 +81,7 @@
                 <!-- Pagination -->
                 @if($incomes->hasPages())
                     <div class="d-flex justify-content-center mt-4">
-                        {{ $incomes->links() }}
+                        {{ $incomes->links('pagination.bootstrap-5') }}
                     </div>
                 @endif
             @endif

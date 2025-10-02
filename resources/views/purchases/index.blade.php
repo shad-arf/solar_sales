@@ -264,7 +264,7 @@
         Showing {{ $purchases->firstItem() ?? 0 }} to {{ $purchases->lastItem() ?? 0 }} of {{ $purchases->total() }} results
     </div>
     <div>
-        {{ $purchases->appends(request()->query())->links() }}
+        {{ $purchases->appends(request()->query())->links('pagination.bootstrap-5') }}
     </div>
 </div>
 

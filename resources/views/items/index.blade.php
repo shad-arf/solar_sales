@@ -627,7 +627,7 @@
         Showing {{ $items->firstItem() ?? 0 }} to {{ $items->lastItem() ?? 0 }} of {{ $items->total() }} results
     </div>
     <div>
-        {{ $items->appends(request()->query())->links() }}
+        {{ $items->appends(request()->query())->links('pagination.bootstrap-5') }}
     </div>
 </div>
 

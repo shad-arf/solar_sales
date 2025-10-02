@@ -215,7 +215,7 @@
         Showing {{ $adjustments->firstItem() ?? 0 }} to {{ $adjustments->lastItem() ?? 0 }} of {{ $adjustments->total() }} results
     </div>
     <div>
-        {{ $adjustments->links() }}
+        {{ $adjustments->links('pagination.bootstrap-5') }}
     </div>
 </div>
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Income;
+use App\Models\Category;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -19,7 +20,8 @@ class IncomeController extends Controller
 
     public function create()
     {
-        return view('income.create');
+        $categories = Category::income()->active()->get();
+        return view('income.create', compact('categories'));
     }
 
     public function store(Request $request)
@@ -27,12 +29,17 @@ class IncomeController extends Controller
         $request->validate([
             'amount' => 'required|numeric|min:0.01',
             'description' => 'required|string|max:255',
-            'category' => 'required|in:' . implode(',', array_keys(Income::CATEGORIES)),
+            'category_id' => 'required|exists:categories,id',
             'date' => 'required|date',
             'reference_number' => 'nullable|string|max:50'
         ]);
 
-        Income::create($request->all());
+        // Get the category for legacy support
+        $category = Category::find($request->category_id);
+        $data = $request->all();
+        $data['category'] = $category->name; // Store legacy category name
+
+        Income::create($data);
 
         return redirect()->route('income.index')
             ->with('success', 'Income recorded successfully!');
@@ -45,7 +52,8 @@ class IncomeController extends Controller
 
     public function edit(Income $income)
     {
-        return view('income.edit', compact('income'));
+        $categories = Category::income()->active()->get();
+        return view('income.edit', compact('income', 'categories'));
     }
 
     public function update(Request $request, Income $income)
@@ -53,12 +61,17 @@ class IncomeController extends Controller
         $request->validate([
             'amount' => 'required|numeric|min:0.01',
             'description' => 'required|string|max:255',
-            'category' => 'required|in:' . implode(',', array_keys(Income::CATEGORIES)),
+            'category_id' => 'required|exists:categories,id',
             'date' => 'required|date',
             'reference_number' => 'nullable|string|max:50'
         ]);
 
-        $income->update($request->all());
+        // Get the category for legacy support
+        $category = Category::find($request->category_id);
+        $data = $request->all();
+        $data['category'] = $category->name; // Store legacy category name
+
+        $income->update($data);
 
         return redirect()->route('income.index')
             ->with('success', 'Income updated successfully!');

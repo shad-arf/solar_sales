@@ -52,7 +52,7 @@
                             <div class="mb-3">
                                 <label class="form-label text-muted">Category</label>
                                 <p class="fw-bold">
-                                    <span class="badge bg-danger fs-6">{{ \App\Models\Expense::CATEGORIES[$expense->category] ?? $expense->category }}</span>
+                                    <span class="badge bg-danger fs-6">{{ $expense->category_name }}</span>
                                 </p>
                             </div>
                         </div>
@@ -94,7 +94,7 @@
                         <i class="bi bi-receipt fs-1"></i>
                     </div>
                     <h3 class="text-danger">${{ number_format($expense->amount, 2) }}</h3>
-                    <p class="text-muted">{{ \App\Models\Expense::CATEGORIES[$expense->category] ?? $expense->category }}</p>
+                    <p class="text-muted">{{ $expense->category_name }}</p>
                     <hr>
                     <small class="text-muted">
                         Spent on {{ $expense->date->format('M d, Y') }}

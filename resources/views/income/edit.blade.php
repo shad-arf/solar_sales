@@ -62,18 +62,33 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="category" class="form-label">Category <span class="text-danger">*</span></label>
-                                    <select class="form-control @error('category') is-invalid @enderror" id="category" name="category" required>
-                                        <option value="">Select Category</option>
-                                        @foreach(\App\Models\Income::CATEGORIES as $key => $name)
-                                            <option value="{{ $key }}" {{ old('category', $income->category) == $key ? 'selected' : '' }}>
-                                                {{ $name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('category')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                                    <label for="category_id" class="form-label">Category <span class="text-danger">*</span></label>
+                                    @if($categories->count() > 0)
+                                        <select class="form-control @error('category_id') is-invalid @enderror" id="category_id" name="category_id" required>
+                                            <option value="">Select Category</option>
+                                            @foreach($categories as $category)
+                                                <option value="{{ $category->id }}" {{ old('category_id', $income->category_id) == $category->id ? 'selected' : '' }}>
+                                                    {{ $category->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('category_id')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        <div class="form-text">
+                                            <i class="bi bi-info-circle"></i> 
+                                            Don't see the category you need? 
+                                            <a href="{{ route('categories.create') }}" target="_blank">Add a new category</a>
+                                        </div>
+                                    @else
+                                        <div class="alert alert-warning">
+                                            <h6><i class="bi bi-exclamation-triangle me-2"></i>No Income Categories Available</h6>
+                                            <p class="mb-2">You need to create at least one income category before you can edit this income record.</p>
+                                            <a href="{{ route('categories.create') }}?type=income" class="btn btn-warning btn-sm">
+                                                <i class="bi bi-plus-circle me-1"></i>Add First Income Category
+                                            </a>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -116,7 +131,7 @@
                     <div class="mb-3">
                         <label class="form-label text-muted">Current Category</label>
                         <p class="fw-bold">
-                            <span class="badge bg-success">{{ \App\Models\Income::CATEGORIES[$income->category] ?? $income->category }}</span>
+                            <span class="badge bg-success">{{ $income->category_name }}</span>
                         </p>
                     </div>
 
@@ -132,11 +147,21 @@
                     <h5 class="card-title mb-0">Income Categories</h5>
                 </div>
                 <div class="card-body">
-                    @foreach(\App\Models\Income::CATEGORIES as $key => $name)
-                        <div class="mb-2">
-                            <span class="badge bg-success">{{ $name }}</span>
+                    @if($categories->count() > 0)
+                        @foreach($categories as $category)
+                            <div class="mb-2">
+                                <span class="badge bg-success">{{ $category->name }}</span>
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="text-center text-muted">
+                            <i class="bi bi-exclamation-circle fs-1 mb-2"></i>
+                            <p>No income categories available.</p>
+                            <a href="{{ route('categories.create') }}?type=income" class="btn btn-success btn-sm">
+                                <i class="bi bi-plus-circle me-1"></i>Add First Category
+                            </a>
                         </div>
-                    @endforeach
+                    @endif
                 </div>
             </div>
         </div>
