@@ -24,12 +24,12 @@
                     <form method="POST" action="{{ route('expenses.update', $expense) }}">
                         @csrf
                         @method('PUT')
-                        
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="date" class="form-label">Date <span class="text-danger">*</span></label>
-                                    <input type="date" class="form-control @error('date') is-invalid @enderror" 
+                                    <input type="date" class="form-control @error('date') is-invalid @enderror"
                                            id="date" name="date" value="{{ old('date', $expense->date->format('Y-m-d')) }}" required>
                                     @error('date')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -39,8 +39,8 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="reference_number" class="form-label">Reference Number</label>
-                                    <input type="text" class="form-control @error('reference_number') is-invalid @enderror" 
-                                           id="reference_number" name="reference_number" value="{{ old('reference_number', $expense->reference_number) }}" 
+                                    <input type="text" class="form-control @error('reference_number') is-invalid @enderror"
+                                           id="reference_number" name="reference_number" value="{{ old('reference_number', $expense->reference_number) }}"
                                            placeholder="Receipt #, Invoice #, etc.">
                                     @error('reference_number')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -51,8 +51,8 @@
 
                         <div class="mb-3">
                             <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
-                            <textarea class="form-control @error('description') is-invalid @enderror" 
-                                      id="description" name="description" rows="3" required 
+                            <textarea class="form-control @error('description') is-invalid @enderror"
+                                      id="description" name="description" rows="3" required
                                       placeholder="Describe what this expense was for...">{{ old('description', $expense->description) }}</textarea>
                             @error('description')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -75,8 +75,8 @@
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                     <div class="form-text">
-                                        <i class="bi bi-info-circle"></i> 
-                                        Don't see the category you need? 
+                                        <i class="bi bi-info-circle"></i>
+                                        Don't see the category you need?
                                         <a href="{{ route('categories.create') }}" target="_blank">Add a new category</a>
                                     </div>
                                 </div>
@@ -86,7 +86,7 @@
                                     <label for="amount" class="form-label">Amount <span class="text-danger">*</span></label>
                                     <div class="input-group">
                                         <span class="input-group-text">$</span>
-                                        <input type="number" class="form-control @error('amount') is-invalid @enderror" 
+                                        <input type="number" class="form-control @error('amount') is-invalid @enderror"
                                                id="amount" name="amount" step="0.01" min="0.01" value="{{ old('amount', $expense->amount) }}" required>
                                     </div>
                                     @error('amount')
@@ -117,11 +117,11 @@
                         <label class="form-label text-muted">Current Amount</label>
                         <p class="fw-bold fs-4 text-danger">${{ number_format($expense->amount, 2) }}</p>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label class="form-label text-muted">Current Category</label>
                         <p class="fw-bold">
-                            <span class="badge bg-danger">{{ $expense->category ? $expense->category->name : 'No category' }}</span>
+                            <span class="badge bg-danger">{{ $expense->category ? $expense->category: 'No category' }}</span>
                         </p>
                     </div>
 

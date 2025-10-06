@@ -248,22 +248,19 @@ class DashboardController extends Controller
         // Total business worth = Total Assets - Total Liabilities
         // Assets: Cash + Inventory (tangible assets only)
         // Note: Owner equity is NOT an asset - it's the difference between assets and liabilities
+        // Note: Cash balance already reflects all income/expenses via transactions, so no need to subtract expenses again
         $totalAssets = $cashBalance + $inventoryValue;
 
-        // Get expense from Cost of Goods Sold account (includes inventory losses)
-        $cogsAccount = Account::where('code', '5000')->first();
-        $inventoryLossExpense = $cogsAccount ? $cogsAccount->balance : 0;
-
-        // Business worth = Assets - Expenses (including inventory losses)
-        $businessWorth = $totalAssets - $inventoryLossExpense;
+        // Business worth = Total Assets (cash balance already includes effect of all expenses)
+        // No need to subtract expenses again as they're already reflected in the cash balance
+        $businessWorth = $totalAssets;
 
         return [
             'business_worth' => $businessWorth,
             'inventory_value' => $inventoryValue,
             'cash_balance' => $cashBalance,
             'net_profit' => $netProfit,
-            'owner_equity' => $ownerEquityBalance,
-            'inventory_loss_expense' => $inventoryLossExpense
+            'owner_equity' => $ownerEquityBalance
         ];
     }
 

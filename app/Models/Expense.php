@@ -66,9 +66,9 @@ class Expense extends Model
     public function getCategoryNameAttribute()
     {
         if ($this->category_id && $this->category) {
-            return $this->category->name;
+            return $this->category;
         }
-        
+
         // Fallback to legacy category constant
         return self::CATEGORIES[$this->category] ?? $this->category;
     }
