@@ -63,9 +63,10 @@ class DashboardController extends Controller
         // This ensures we show correct value even if accounting isn't fully initialized
         $inventoryValue = $actualInventoryValue;
 
-        // If no accounting data, fallback to old calculation for cash
+        // If no accounting data, fallback to calculation including sales revenue
         if (!$cashAccount) {
-            $cashBalance = max(0, $totalRevenue - $totalExpenses);
+            $totalSalesRevenue = \App\Models\Sale::sum('paid_amount') ?: 0;
+            $cashBalance = max(0, $totalRevenue + $totalSalesRevenue - $totalExpenses);
         }
 
         $totalAssets = $inventoryValue + $cashBalance;
@@ -120,7 +121,8 @@ class DashboardController extends Controller
 
         // Fallback if accounting system not set up for cash
         if (!$cashAccount) {
-            $cashBalance = max(0, Income::getTotalThisYear() - Expense::getTotalThisYear());
+            $totalSalesRevenue = \App\Models\Sale::whereYear('sale_date', Carbon::now()->year)->sum('paid_amount') ?: 0;
+            $cashBalance = max(0, Income::getTotalThisYear() + $totalSalesRevenue - Expense::getTotalThisYear());
         }
 
         $assets = collect([
@@ -228,9 +230,10 @@ class DashboardController extends Controller
 
         // Fallback calculations if cash accounting not set up
         if (!$cashAccount) {
-            $totalIncome = Income::getTotalThisYear() + $inventoryValue;
+            $totalIncome = Income::getTotalThisYear();
+            $totalSalesRevenue = \App\Models\Sale::whereYear('sale_date', Carbon::now()->year)->sum('paid_amount') ?: 0;
             $totalExpenses = Expense::getTotalThisYear();
-            $cashBalance = max(0, $totalIncome - $totalExpenses);
+            $cashBalance = max(0, $totalIncome + $totalSalesRevenue - $totalExpenses);
         }
 
         // Use accounting system for owner equity if available
@@ -240,10 +243,11 @@ class DashboardController extends Controller
             $ownerEquityBalance = OwnerEquity::getNetEquity();
         }
 
-        // Net profit from operations
+        // Net profit from operations (include sales revenue)
         $totalIncome = Income::getTotalThisYear();
+        $totalSalesRevenue = \App\Models\Sale::whereYear('sale_date', Carbon::now()->year)->sum('paid_amount') ?: 0;
         $totalExpenses = Expense::getTotalThisYear();
-        $netProfit = $totalIncome - $totalExpenses;
+        $netProfit = $totalIncome + $totalSalesRevenue - $totalExpenses;
 
         // Total business worth = Total Assets - Total Liabilities
         // Assets: Cash + Inventory (tangible assets only)
@@ -289,16 +293,18 @@ class DashboardController extends Controller
 
     private function getSalesStats()
     {
-        // Using Income as sales data for now
-        $totalSales = Income::getTotalThisYear();
-        $monthlySales = Income::getTotalThisMonth();
-        $salesCount = Income::count();
+        // Use actual Sales model instead of Income
+        $totalSales = \App\Models\Sale::whereYear('sale_date', Carbon::now()->year)->sum('total') ?: 0;
+        $monthlySales = \App\Models\Sale::whereMonth('sale_date', Carbon::now()->month)
+            ->whereYear('sale_date', Carbon::now()->year)
+            ->sum('total') ?: 0;
+        $salesCount = \App\Models\Sale::whereYear('sale_date', Carbon::now()->year)->count();
         $averageSale = $salesCount > 0 ? $totalSales / $salesCount : 0;
 
         // Calculate growth
-        $lastMonthSales = Income::whereMonth('date', Carbon::now()->subMonth()->month)
-            ->whereYear('date', Carbon::now()->subMonth()->year)
-            ->sum('amount');
+        $lastMonthSales = \App\Models\Sale::whereMonth('sale_date', Carbon::now()->subMonth()->month)
+            ->whereYear('sale_date', Carbon::now()->subMonth()->year)
+            ->sum('total') ?: 0;
 
         $salesGrowth = $lastMonthSales > 0 ? (($monthlySales - $lastMonthSales) / $lastMonthSales) * 100 : 0;
 
@@ -346,9 +352,11 @@ class DashboardController extends Controller
 
         // Fallback if cash accounting not available
         if (!$cashAccount) {
+            // Include actual sales revenue in cash calculation
             $totalIncome = Income::getTotalThisYear();
+            $totalSalesRevenue = \App\Models\Sale::whereYear('sale_date', Carbon::now()->year)->sum('paid_amount') ?: 0;
             $totalExpenses = Expense::getTotalThisYear();
-            $cashBalance = max(0, $totalIncome - $totalExpenses);
+            $cashBalance = max(0, $totalIncome + $totalSalesRevenue - $totalExpenses);
         }
 
         // Use accounting system for owner equity if available

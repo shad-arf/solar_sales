@@ -340,7 +340,7 @@ class SaleController extends Controller
             $lineTotal  = $validated['line_total'][$i];
             $priceId    = $validated['price_id'][$i];
 
-            $item = Item::findOrFail(id: $itemId);
+            $item = Item::findOrFail($itemId);
             //  They said we have issue with stock going negative, so commenting out for now
             // if ($item->quantity < $quantity) {
             //     throw new \Exception("Not enough stock for {$item->name}. Available: {$item->quantity}");
@@ -371,6 +371,9 @@ class SaleController extends Controller
                 'paid_at' => now(),
             ]);
         }
+
+        // 4) Create accounting transactions for the sale
+        $this->createSaleAccountingEntries($sale);
 
         DB::commit();
         return redirect()->route('sales.index')
@@ -451,7 +454,7 @@ class SaleController extends Controller
             //     if ($delta < 0) {
             //         $item = Item::findOrFail($itemId);
             //         if ($item->quantity < abs($delta)) {
-            //             throw new \Exception(message: "Insufficient stock for {$item->name} ({$item->quantity} available)");
+            //             throw new \Exception("Insufficient stock for {$item->name} ({$item->quantity} available)");
             //         }
             //     }
             // }
@@ -583,13 +586,16 @@ class SaleController extends Controller
             $outstanding = $sale->total - $sale->paid_amount;
             if ($outstanding > 0) {
                 // Create a payment for the outstanding difference
-                Payment::create([
+                $payment = Payment::create([
                     'sale_id' => $sale->id,
                     'amount'  => $outstanding,
                     'paid_at' => now(),
                     'note'    => 'Cleared via Clear Loan button',
                 ]);
                 $sale->increment('paid_amount', $outstanding);
+                
+                // Create accounting entry for the payment
+                $this->createPaymentAccountingEntry($payment, $sale);
             }
         }
 
@@ -597,5 +603,164 @@ class SaleController extends Controller
         $customer->update(['loan' => 0]);
 
         return back()->with('success', 'All outstanding amounts marked paid and customer loan cleared.');
+    }
+
+    /**
+     * Create accounting entries for a sale
+     */
+    private function createSaleAccountingEntries(Sale $sale)
+    {
+        // Ensure required accounts exist
+        $this->ensureAccountingAccountsExist();
+        
+        // Get required accounts
+        $cashAccount = \App\Models\Account::where('code', '1000')->first(); // Cash
+        $inventoryAccount = \App\Models\Account::where('code', '1200')->first(); // Inventory
+        $revenueAccount = \App\Models\Account::where('code', '4000')->first(); // Sales Revenue
+        $cogsAccount = \App\Models\Account::where('code', '5000')->first(); // Cost of Goods Sold
+
+        if (!$cashAccount || !$inventoryAccount || !$revenueAccount || !$cogsAccount) {
+            // If accounts still don't exist after creation attempt, skip accounting entries
+            return;
+        }
+
+        $saleAmount = $sale->total;
+        $paidAmount = $sale->paid_amount;
+        $referenceNumber = "SALE-{$sale->id}-{$sale->code}";
+        $description = "Sale #{$sale->code} - " . ($sale->customer ? $sale->customer->name : 'Customer');
+
+        // 1. Record cash received (if any payment was made)
+        if ($paidAmount > 0) {
+            \App\Models\Transaction::create([
+                'account_id' => $cashAccount->id,
+                'description' => $description . " (Cash received)",
+                'debit_amount' => $paidAmount,
+                'credit_amount' => 0,
+                'transaction_date' => $sale->sale_date,
+                'reference_number' => $referenceNumber,
+                'transaction_type' => 'sale'
+            ]);
+        }
+
+        // 2. Record accounts receivable for unpaid amount (if any)
+        $unpaidAmount = $saleAmount - $paidAmount;
+        if ($unpaidAmount > 0) {
+            $arAccount = \App\Models\Account::where('code', '1100')->first(); // Accounts Receivable
+            if ($arAccount) {
+                \App\Models\Transaction::create([
+                    'account_id' => $arAccount->id,
+                    'description' => $description . " (Accounts Receivable)",
+                    'debit_amount' => $unpaidAmount,
+                    'credit_amount' => 0,
+                    'transaction_date' => $sale->sale_date,
+                    'reference_number' => $referenceNumber,
+                    'transaction_type' => 'sale'
+                ]);
+            }
+        }
+
+        // 3. Record sales revenue (credit)
+        \App\Models\Transaction::create([
+            'account_id' => $revenueAccount->id,
+            'description' => $description . " (Sales Revenue)",
+            'debit_amount' => 0,
+            'credit_amount' => $saleAmount,
+            'transaction_date' => $sale->sale_date,
+            'reference_number' => $referenceNumber,
+            'transaction_type' => 'revenue'
+        ]);
+
+        // 4. Record cost of goods sold and inventory reduction
+        $totalCost = 0;
+        foreach ($sale->orderItems as $orderItem) {
+            $item = $orderItem->item;
+            if ($item && $item->price > 0) {
+                // Use item's cost price (we'll use the price field as cost for now)
+                $costPerUnit = $item->price;
+                $totalItemCost = $costPerUnit * $orderItem->quantity;
+                $totalCost += $totalItemCost;
+            }
+        }
+
+        if ($totalCost > 0) {
+            // Debit COGS (increase expense)
+            \App\Models\Transaction::create([
+                'account_id' => $cogsAccount->id,
+                'description' => $description . " (Cost of Goods Sold)",
+                'debit_amount' => $totalCost,
+                'credit_amount' => 0,
+                'transaction_date' => $sale->sale_date,
+                'reference_number' => $referenceNumber,
+                'transaction_type' => 'expense'
+            ]);
+
+            // Credit Inventory (decrease asset)
+            \App\Models\Transaction::create([
+                'account_id' => $inventoryAccount->id,
+                'description' => $description . " (Inventory reduction)",
+                'debit_amount' => 0,
+                'credit_amount' => $totalCost,
+                'transaction_date' => $sale->sale_date,
+                'reference_number' => $referenceNumber,
+                'transaction_type' => 'sale'
+            ]);
+        }
+    }
+
+    /**
+     * Create accounting entry for additional payments (accounts receivable -> cash)
+     */
+    private function createPaymentAccountingEntry(Payment $payment, Sale $sale)
+    {
+        $cashAccount = \App\Models\Account::where('code', '1000')->first(); // Cash
+        $arAccount = \App\Models\Account::where('code', '1100')->first(); // Accounts Receivable
+        
+        if (!$cashAccount || !$arAccount) {
+            return; // Skip if accounts don't exist
+        }
+        
+        $amount = $payment->amount;
+        $referenceNumber = "PAY-{$payment->id}-SALE-{$sale->code}";
+        $description = "Payment for Sale #{$sale->code} - " . ($sale->customer ? $sale->customer->name : 'Customer');
+        
+        // Debit Cash (increase cash)
+        \App\Models\Transaction::create([
+            'account_id' => $cashAccount->id,
+            'description' => $description,
+            'debit_amount' => $amount,
+            'credit_amount' => 0,
+            'transaction_date' => $payment->paid_at->format('Y-m-d'),
+            'reference_number' => $referenceNumber,
+            'transaction_type' => 'revenue'
+        ]);
+        
+        // Credit Accounts Receivable (decrease receivable)
+        \App\Models\Transaction::create([
+            'account_id' => $arAccount->id,
+            'description' => $description,
+            'debit_amount' => 0,
+            'credit_amount' => $amount,
+            'transaction_date' => $payment->paid_at->format('Y-m-d'),
+            'reference_number' => $referenceNumber,
+            'transaction_type' => 'other'
+        ]);
+    }
+
+    /**
+     * Ensure required accounting accounts exist
+     */
+    private function ensureAccountingAccountsExist()
+    {
+        $requiredAccounts = [
+            ['name' => 'Cash', 'type' => 'asset', 'code' => '1000', 'description' => 'Cash on hand and in bank'],
+            ['name' => 'Accounts Receivable', 'type' => 'asset', 'code' => '1100', 'description' => 'Money owed by customers'],
+            ['name' => 'Inventory', 'type' => 'asset', 'code' => '1200', 'description' => 'Solar panels and equipment inventory'],
+            ['name' => 'Solar Sales Revenue', 'type' => 'revenue', 'code' => '4000', 'description' => 'Revenue from solar panel sales'],
+            ['name' => 'Cost of Goods Sold', 'type' => 'expense', 'code' => '5000', 'description' => 'Direct cost of solar panels sold'],
+        ];
+
+        foreach ($requiredAccounts as $account) {
+            \App\Models\Account::firstOrCreate(['code' => $account['code']], $account);
+        }
     }
 }
